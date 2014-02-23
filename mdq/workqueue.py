@@ -1,3 +1,5 @@
+__all__ = ['MkWorkQueue']
+
 import work_queue as ccl
 import os
 import pwd
