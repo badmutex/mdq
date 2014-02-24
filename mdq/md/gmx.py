@@ -75,16 +75,20 @@ class GMX(object):
                  itp='posre.itp',
                  mdp='grompp.mdp'):
 
-        self._workarea = workarea
-        self._gens     = generations
-        self._gro      = os.path.join(workarea, gro)
-        self._top      = os.path.join(workarea, top)
-        self._itp      = os.path.join(workarea, itp)
-        self._mdp      = os.path.join(workarea, mdp)
-        self._gensteps = None
+        self._workarea     = workarea
+        self._gens         = generations
+        self._gro          = os.path.join(workarea, gro)
+        self._top          = os.path.join(workarea, top)
+        self._itp          = os.path.join(workarea, itp)
+        self._mdp          = os.path.join(workarea, mdp)
+        self._gensteps     = None
+        self._input_files  = list()
+        self._output_files = list()
 
     def _set_seed(self, seed):
         mdp = mdprep.load(self._mdp)
         mdp.seed(seed)
         mdp.save(self._mdp)
 
+    def _init_input_files(self):
+        
