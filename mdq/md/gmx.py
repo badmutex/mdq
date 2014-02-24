@@ -1,7 +1,7 @@
-
 import mdprep
+
+import collections
 import os
-import shlex
 import subprocess
 import textwrap
 
@@ -47,6 +47,24 @@ def get_nsteps(path):
     out = subprocess.check_output(cmd, shell=True).strip()
     nsteps = int(out)
     return nsteps
+
+def which(exes, search=None):
+    """
+    Attemps to locate the given executable names in the provides search paths
+    """
+
+    search = search if search is not None else os.environ['PATH'].split(os.pathsep)
+    found  = collections.defaultdict(lambda: False)
+    for prefix in search:
+        for name in exes:
+            path = os.path.join(prefix, name)
+            if os.path.exists(path) and os.access(path, os.X_OK):
+                found[name] = path
+                continue
+
+    assert set(found.keys()).difference(set(exes)) == set()
+    if not all(found.values()): raise Exception
+    return dict(found)
 
 
 class GMX(object):
