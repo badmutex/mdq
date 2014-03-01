@@ -1,4 +1,4 @@
-from .. import util
+from .. import work_queue
 import mdprep
 import collections
 import os
@@ -6,16 +6,20 @@ import subprocess
 import textwrap
 import uuid
 
+BINARY_NAMES        = ['guamps_get',
+                       'guamps_set',
+                       'mdrun']
+
 TRAJ_FILES          = ['traj.trr',
                        'traj.xtc',
                        'ener.edr'
                        'md.log']
 
 SELECTIONS          = dict(positions='x', velocities='v',time='t')
-script_input_names  = dict(x = 'x_i.gps', v = 'v_i.gps', t = 't_i.gps')
-script_output_names = dict(x = 'x_o.gps', v = 'v_o.gps', t = 't_o.gps')
+SCRIPT_INPUT_NAMES  = dict(x = 'x_i.gps', v = 'v_i.gps', t = 't_i.gps')
+SCRIPT_OUTPUT_NAMES = dict(x = 'x_o.gps', v = 'v_o.gps', t = 't_o.gps')
 
-script = textwrap.dedent("""\
+SCRIPT = textwrap.dedent("""\
 #!/usr/bin/env bash
 # exit if any command fails
 set -o errexit 
@@ -24,24 +28,24 @@ set -o errexit
 export GMX_MAXBACKUP=-1
 
 continue from previous positions, velocities, and time
-guamps_set -f topol.tpr -s positions  -i %(x_i)s
-guamps_set -f topol.tpr -s velocities -i %(v_i)s
-guamps_set -f topol.tpr -s time       -i %(t_i)s
+./guamps_set -f topol.tpr -s positions  -i %(x_i)s
+./guamps_set -f topol.tpr -s velocities -i %(v_i)s
+./guamps_set -f topol.tpr -s time       -i %(t_i)s
 
 # run with given number of processors
-mdrun -nt $(cat processors.gps)
+./mdrun -nt $(cat processors.gps)
 
 # retrieve the positions, velocities, and time
-guamps_get -f traj.trr -s positions  -o %(x_o)s
-guamps_set -f traj.trr -s velocities -o %(v_o)s
-guamps_get -f traj.trr -s time       -o %(t_o)s
+./guamps_get -f traj.trr -s positions  -o %(x_o)s
+./guamps_set -f traj.trr -s velocities -o %(v_o)s
+./guamps_get -f traj.trr -s time       -o %(t_o)s
 """ % dict(
-    x_i = script_input_names ['x'],
-    v_i = script_input_names ['v'],
-    t_i = script_input_names ['t'],
-    x_o = script_output_names['x'],
-    v_o = script_output_names['v'],
-    t_o = script_output_names['t'],
+    x_i = SCRIPT_INPUT_NAMES ['x'],
+    v_i = SCRIPT_INPUT_NAMES ['v'],
+    t_i = SCRIPT_INPUT_NAMES ['t'],
+    x_o = SCRIPT_OUTPUT_NAMES['x'],
+    v_o = SCRIPT_OUTPUT_NAMES['v'],
+    t_o = SCRIPT_OUTPUT_NAMES['t'],
     )
 )
 
@@ -103,22 +107,26 @@ guamps_set = mdprep.process.optcmd('guamps_set')
 
 class GMX(object):
 
-    def __init__(self, workarea='.', name='mdq', generations=1,
+    def __init__(self, workarea='.', out='mdq', generations=1,
+                 binaries=None,
                  transfer_traj=True,
                  time=None, outfreq=1000,
+                 nprocs=None,
                  gro='conf.gro',
                  top='topol.top',
                  itp='posre.itp',
                  mdp='grompp.mdp',
                  tpr='topol.tpr'):
 
+        assert binaries is not None
         # input parameters
         self._workarea     = workarea
-        self._name         = name
+        self._out          = out
         self._gens         = generations
         self._transfer_traj=transfer_traj
         self._time         = time if time is not None else -1
         self._outfreq      = outfreq
+        self._nprocs       = nprocs if nprocs is not None else 0
         self._gro          = gro
         self._top          = top
         self._itp          = itp
@@ -194,18 +202,78 @@ class GMX(object):
         self._reseed()
         self._write_input_from_tpr()
 
+    def _prepare(task):
+        if task is None:
+            assert self._gen == 0
+            self._init_prepare()
+        else:
+            assert self._gen > 0
+            assert task.result == 0
+            assert task.return_status == 0
+            assert task.tag == self.id
+
+        t = work_queue.Task('bash md.sh')
+        t.specify_buffer(SCRIPT, 'md.sh', cache=True)
+        t.specify_buffer(str(self._nprocs), 'processors.gps', cache=True)
+
+        # cache tpr
+        t.specify_input_file(os.path.join(self._workarea, self._tpr), cache=True)
+
+        # don't cache input files
+        for n in SCRIPT_INPUT_NAMES.itervalues():
+            local  = os.path.join(self.previous_simdir, n)
+            remote = n
+            t.specify_input_file(local, remote, cache=False)
+
+        # don't cache output files
+        for n in SCRIPT_OUTPUT_NAMES.itervalues():
+            local  = os.path.join(self.current_simdir, n)
+            remote = n
+            t.specify_output_file(local, remote, cache=False)
+
+        # cache the binaries
+        for n in BINARY_NAMES:
+            local  = os.path.join(self._binaries, '$OS', '$ARCH', n)
+            remote = n
+            t.specify_input_file(local, remote, cache=True)
+
+        # tag with uuid
+        t.specify_tag(self._uuid)
+
+        return t
+
+    def _gendir(self, gen):
+        """Get the simulation directory of the specified `gen`"""
+        assert gen >= 0
+        return os.path.join(self._workarea, self._out, str(gen))
+
+    def incr(self):
+        """Increment the generation count"""
+        self._gen += 1
+
     @property
     def id(self): return self._uuid
 
     @property
-    def tag(self): return '%s.%d' % (self.id, self._gen)
+    def gen(self):
+        """The current generation"""
+        return self._gen
 
     @property
-    def simdir(self):
+    def current_simdir(self):
         """
         Get the simulation directory of the current `gen`
         """
-        return os.path.join(self._workarea, self._name, str(self._gen))
+        return self._gendir(self._gen)
+
+    @property
+    def previous_simdir(self):
+        """
+        Get the simulation directory of the previous `gen`
+        """
+        assert self._gen >= 0
+        g = self._gen if self._gen == 0 else self._gen - 1
+        return self._simdir(g)
 
     def __call__(self, task=None):
         """
