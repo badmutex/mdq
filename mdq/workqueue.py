@@ -5,6 +5,8 @@ import os
 import pwd
 import socket
 
+Task = ccl.Task
+
 class MkWorkQueue(object):
     """
     Factory for creating WorkQueue object

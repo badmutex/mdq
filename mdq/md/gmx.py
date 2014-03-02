@@ -1,9 +1,11 @@
-from .. import work_queue
+from .. import workqueue
 import mdprep
 import collections
 import os
+import random
 import subprocess
 import textwrap
+import tempfile
 import uuid
 
 BINARY_NAMES        = ['guamps_get',
@@ -124,6 +126,7 @@ class GMX(object):
         self._out          = out
         self._gens         = generations
         self._transfer_traj=transfer_traj
+        self._binaries     = binaries
         self._time         = time if time is not None else -1
         self._outfreq      = outfreq
         self._nprocs       = nprocs if nprocs is not None else 0
@@ -149,7 +152,7 @@ class GMX(object):
                           c=self._gro,
                           p=self._top,
                           o=self._tpr
-                          ).run()
+                          )
 
     def _set_tpr_scalar_params(self, selection, value):
         with mdprep.util.StackDir(self._workarea), tempfile.NamedTemporaryFile() as tmp:
@@ -159,23 +162,23 @@ class GMX(object):
                        s=selection,
                        i=tmp.name,
                        O=True
-                       ).run()
+                       )
 
     def _get_tpr_scalar(self, selection, typed):
         with mdprep.util.StackDir(self._workarea), tempfile.NamedTemporaryFile() as tmp:
             guamps_get(f=self._tpr,
                        s=selection,
-                       o,tmp.name
-                       ).run()
+                       o=tmp.name,
+                       )
             tmp.seek(0)
             return typed(tmp.readline())
 
     def _set_tpr(self):
-        dt = self._get_tpr_scalar('dt', float)
+        dt = self._get_tpr_scalar('deltat', float)
         if self._time > 0:
             nsteps = int(self._time / dt)
         else:
-            nsteps = self._nsteps
+            nsteps = -1
         self._set_tpr_scalar_params('nsteps', nsteps)
         for sel in 'nstxout nstvout nstfout nstlog nstxtcout'.split():
             freq = int(self._outfreq / dt)
@@ -184,14 +187,14 @@ class GMX(object):
     def _reseed(self):
         self._set_tpr_scalar_params('ld_seed', random.randint(1, 10**10))
 
-    def _write_inputs_from_tpr(self):
-        tpr = os.path.abspath(self._tpr)
-        with mdprep.util.StackDir(self.simdir):
+    def _write_task_files(self):
+        tpr = os.path.abspath(os.path.join(self._workarea, self._tpr))
+        with mdprep.util.StackDir(self.current_simdir):
             for selection, name in SELECTIONS.iteritems():
                 guamps_get(f=tpr,
                            s=selection,
-                           o=script_input_names[name]
-                           ).run()
+                           o=SCRIPT_INPUT_NAMES[name]
+                           )
 
     def _init_prepare(self):
         """
@@ -200,9 +203,9 @@ class GMX(object):
         self._mk_tpr()
         self._set_tpr()
         self._reseed()
-        self._write_input_from_tpr()
+        self._write_task_files()
 
-    def _prepare(task):
+    def _prepare(self, task):
         if task is None:
             assert self._gen == 0
             self._init_prepare()
@@ -212,7 +215,7 @@ class GMX(object):
             assert task.return_status == 0
             assert task.tag == self.id
 
-        t = work_queue.Task('bash md.sh')
+        t = workqueue.Task('bash md.sh')
         t.specify_buffer(SCRIPT, 'md.sh', cache=True)
         t.specify_buffer(str(self._nprocs), 'processors.gps', cache=True)
 
@@ -238,7 +241,7 @@ class GMX(object):
             t.specify_input_file(local, remote, cache=True)
 
         # tag with uuid
-        t.specify_tag(self._uuid)
+        t.specify_tag(str(self._uuid))
 
         return t
 
@@ -273,15 +276,13 @@ class GMX(object):
         """
         assert self._gen >= 0
         g = self._gen if self._gen == 0 else self._gen - 1
-        return self._simdir(g)
+        return self._gendir(g)
 
     def __call__(self, task=None):
         """
         task: the WQ Task of the previous generation
         """
-        self._prepare(task)
-        t = self._mk_task()
-        return t
+        return self._prepare(task)
 
 
 
