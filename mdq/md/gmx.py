@@ -90,20 +90,6 @@ def which(exes, search=None):
     if not all(found.values()): raise Exception
     return dict(found)
 
-class NoAutobackup(object):
-    def __init__(self):
-        self._k = 'GMX_MAXBACKUP'
-        self._val = None
-
-    def __enter__(self):
-        if self._k in os.environ:
-            self._val   = os.environ[self._k]
-        os.environ[self._k] = '-1'
-
-    def __exit__(self, *args, **kws):
-        if self._val is not None:
-            os.environ[self._k] = self._val
-
 guamps_get = mdprep.process.optcmd('guamps_get')
 guamps_set = mdprep.process.optcmd('guamps_set')
 
@@ -147,7 +133,7 @@ class GMX(object):
         mdp.save(self._mdp)
 
     def _mk_tpr(self):
-        with mdprep.util.StackDir(self._workarea), NoAutobackup():
+        with mdprep.util.StackDir(self._workarea), mdprep.gmx.NoAutobackup():
             mdprep.grompp(f=self._mdp,
                           c=self._gro,
                           p=self._top,
