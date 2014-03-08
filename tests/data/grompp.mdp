@@ -1,0 +1,46 @@
+; SETUP
+
+; RUN CONTROL
+integrator = sd
+ld_seed = 101
+dt = 0.002
+nsteps = -1
+
+; OUTPUT CONTROL
+nstxout = 250000
+nstvout = 250000
+nstfout = 250000
+nstlog = 250000
+nstenergy = 250000
+nstxtcout = 250000
+xtc_grps = System
+
+; NEIGHBOR SEARCHING
+nstlist = 10
+ns_type = grid
+pbc = xyz
+periodic_molecules = no
+rlist = 1
+
+; ELECTROSTATICS
+coulombtype = Reaction-Field
+rcoulomb = 1
+epsilon_r = 1
+epsilon_rf = 1.1
+
+; VdW
+vdwtype = shift
+rvdw = 1
+
+; TEMPERATURE COUPLING
+tcoupl = no
+tc_grps = System
+ref_t = 300
+tau_t = 1.0
+
+; PRESSURE COUPLING
+pcoupl = no
+
+; BOND CONSTRAINTS
+constraints = hbonds
+
