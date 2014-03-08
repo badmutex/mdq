@@ -14,10 +14,11 @@ BINARY_NAMES        = ['guamps_get',
 
 TRAJ_FILES          = ['traj.trr',
                        'traj.xtc',
-                       'ener.edr'
+                       'ener.edr',
                        'md.log']
 
 SELECTIONS          = dict(positions='x', velocities='v',time='t')
+FILE_NAMES          = dict(x = 'x.gps'  , v = 'v.gps'  , t = 't.gps')
 SCRIPT_INPUT_NAMES  = dict(x = 'x_i.gps', v = 'v_i.gps', t = 't_i.gps')
 SCRIPT_OUTPUT_NAMES = dict(x = 'x_o.gps', v = 'v_o.gps', t = 't_o.gps')
 
@@ -110,7 +111,7 @@ guamps_set = mdprep.process.optcmd('guamps_set')
 
 class GMX(object):
 
-    def __init__(self, workarea='.', out='mdq', generations=1,
+    def __init__(self, workarea='.', out='mdq',
                  binaries=None,
                  transfer_traj=True,
                  time=None, outfreq=1000,
@@ -125,7 +126,6 @@ class GMX(object):
         # input parameters
         self._workarea     = workarea
         self._out          = out
-        self._gens         = generations
         self._transfer_traj=transfer_traj
         self._binaries     = binaries
         self._time         = time if time is not None else -1
@@ -194,7 +194,7 @@ class GMX(object):
             for selection, name in SELECTIONS.iteritems():
                 guamps_get(f=tpr,
                            s=selection,
-                           o=SCRIPT_INPUT_NAMES[name]
+                           o=FILE_NAMES[name]
                            )
 
     def _init_prepare(self):
@@ -207,36 +207,39 @@ class GMX(object):
         self._write_task_files()
 
     def _prepare(self, task):
-        if task is None:
-            assert self._gen == 0
+        if self._gen == 0:
             self._init_prepare()
-        else:
-            assert self._gen > 0
-            assert task.result == 0
-            assert task.return_status == 0
-            assert task.tag == self.id
+
+        mdprep.util.ensure_dir(self.next_simdir)
 
         t = workqueue.Task('bash md.sh >%s 2>&1' % LOGFILE)
         t.specify_buffer(SCRIPT, 'md.sh', cache=True)
         t.specify_buffer(str(self._nprocs), 'processors.gps', cache=True)
-        open(os.path.join(self.current_simdir, 'md.sh'), 'w').write(SCRIPT)
 
         # cache tpr
         t.specify_input_file(os.path.join(self._workarea, self._tpr), cache=True)
 
         # don't cache input files
-        for n in SCRIPT_INPUT_NAMES.itervalues():
-            local  = os.path.join(self.previous_simdir, n)
-            remote = n
+        for key, name in FILE_NAMES.iteritems():
+            local  = os.path.join(self.current_simdir, name)
+            remote = SCRIPT_INPUT_NAMES[key]
             t.specify_input_file(local, remote, cache=False)
             print local, '->', remote
 
         # don't cache output files
-        for n in SCRIPT_OUTPUT_NAMES.values() + [LOGFILE]:
+        traj = TRAJ_FILES if self._transfer_traj else []
+        for key, name in FILE_NAMES.items():
+            local  = os.path.join(self.next_simdir, name)
+            remote = SCRIPT_OUTPUT_NAMES[key]
+            t.specify_output_file(local, remote, cache=False)
+            print local, '<-', remote
+
+        for n in [LOGFILE] + traj:
             local  = os.path.join(self.current_simdir, n)
             remote = n
             t.specify_output_file(local, remote, cache=False)
             print local, '<-', remote
+
 
         # cache the binaries
         for n in BINARY_NAMES:
@@ -274,12 +277,11 @@ class GMX(object):
         return self._gendir(self._gen)
 
     @property
-    def previous_simdir(self):
+    def next_simdir(self):
         """
-        Get the simulation directory of the previous `gen`
+        Get the simulation directory of the next `gen`
         """
-        assert self._gen >= 0
-        g = self._gen if self._gen == 0 else self._gen - 1
+        g = self._gen + 1
         return self._gendir(g)
 
     def __call__(self, task=None):

@@ -14,12 +14,13 @@ m = MkWorkQueue()
     m
     .port(9123)
     .debug_all()
-    .logfile()
 )
 q = m()
 q.submit(t)
 
 while not q.empty():
-    t = q.wait(5)
-    if not t: continue
-        
+    r = q.wait(5)
+    if r:
+        g.incr()
+        t = g()
+        q.submit(t)
