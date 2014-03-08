@@ -26,21 +26,34 @@ SCRIPT = textwrap.dedent("""\
 # exit if any command fails
 set -o errexit 
 
+export PATH=$PWD:$PATH
+
+# input files
+x_i=%(x_i)s
+v_i=%(v_i)s
+t_i=%(t_i)s
+
+# output files
+x_o=%(x_o)s
+v_o=%(v_o)s
+t_o=%(t_o)s
+
 # disable gromacs automatic backups
 export GMX_MAXBACKUP=-1
 
-continue from previous positions, velocities, and time
-./guamps_set -f topol.tpr -s positions  -i %(x_i)s
-./guamps_set -f topol.tpr -s velocities -i %(v_i)s
-./guamps_set -f topol.tpr -s time       -i %(t_i)s
+# continue from previous positions, velocities, and time
+guamps_set -f topol.tpr -s positions  -i $x_i
+guamps_set -f topol.tpr -s velocities -i $v_i
+guamps_set -f topol.tpr -s time       -i $t_i
 
 # run with given number of processors
-./mdrun -nt $(cat processors.gps)
+mdrun -nt $(cat processors.gps)
 
 # retrieve the positions, velocities, and time
-./guamps_get -f traj.trr -s positions  -o %(x_o)s
-./guamps_set -f traj.trr -s velocities -o %(v_o)s
-./guamps_get -f traj.trr -s time       -o %(t_o)s
+guamps_get -f traj.trr -s positions  -o $x_o
+guamps_get -f traj.trr -s velocities -o $v_o
+guamps_get -f traj.trr -s time       -o $t_o
+
 """ % dict(
     x_i = SCRIPT_INPUT_NAMES ['x'],
     v_i = SCRIPT_INPUT_NAMES ['v'],
@@ -57,6 +70,8 @@ executables = [
     , 'guamps_set'
     , 'mdrun'
 ]
+
+LOGFILE = 'task.log'
 
 def get_nsteps(path):
     suffix = os.path.splitext(path)[-1]
@@ -201,9 +216,10 @@ class GMX(object):
             assert task.return_status == 0
             assert task.tag == self.id
 
-        t = workqueue.Task('bash md.sh')
+        t = workqueue.Task('bash md.sh >%s 2>&1' % LOGFILE)
         t.specify_buffer(SCRIPT, 'md.sh', cache=True)
         t.specify_buffer(str(self._nprocs), 'processors.gps', cache=True)
+        open(os.path.join(self.current_simdir, 'md.sh'), 'w').write(SCRIPT)
 
         # cache tpr
         t.specify_input_file(os.path.join(self._workarea, self._tpr), cache=True)
@@ -213,12 +229,14 @@ class GMX(object):
             local  = os.path.join(self.previous_simdir, n)
             remote = n
             t.specify_input_file(local, remote, cache=False)
+            print local, '->', remote
 
         # don't cache output files
-        for n in SCRIPT_OUTPUT_NAMES.itervalues():
+        for n in SCRIPT_OUTPUT_NAMES.values() + [LOGFILE]:
             local  = os.path.join(self.current_simdir, n)
             remote = n
             t.specify_output_file(local, remote, cache=False)
+            print local, '<-', remote
 
         # cache the binaries
         for n in BINARY_NAMES:

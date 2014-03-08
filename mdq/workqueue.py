@@ -47,7 +47,7 @@ class MkWorkQueue(object):
         if self._logfile is not None:
             q.specify_log(self._logfile)
 
-
+        return q
 
     def port(self, port=None):
         """
