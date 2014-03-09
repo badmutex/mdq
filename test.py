@@ -5,7 +5,7 @@ mdprep.log.debug()
 
 from mdq.md import gmx
 
-g = gmx.GMX('tests/data', binaries='binaries', time=1)
+g = gmx.GMX('tests/data', binaries='binaries', time=2)
 t = g()
 
 from mdq.workqueue import MkWorkQueue

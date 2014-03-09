@@ -1,6 +1,7 @@
 from .. import workqueue
 import mdprep
 import collections
+import copy
 import os
 import random
 import subprocess
@@ -141,6 +142,8 @@ class GMX(object):
         self._uuid         = uuid.uuid1()
         self._gen          = 0 # current generation
         self._ok           = False # current generation is successfull
+        self._inputfiles   = list()
+        self._outputfiles  = list()
 
     def _set_seed(self, seed):
         mdp = mdprep.load(self._mdp)
@@ -190,7 +193,7 @@ class GMX(object):
 
     def _write_task_files(self):
         tpr = os.path.abspath(os.path.join(self._workarea, self._tpr))
-        with mdprep.util.StackDir(self.current_simdir):
+        with mdprep.util.StackDir(self._current_simdir):
             for selection, name in SELECTIONS.iteritems():
                 guamps_get(f=tpr,
                            s=selection,
@@ -210,7 +213,7 @@ class GMX(object):
         if self._gen == 0:
             self._init_prepare()
 
-        mdprep.util.ensure_dir(self.next_simdir)
+        mdprep.util.ensure_dir(self._next_simdir)
 
         t = workqueue.Task('bash md.sh >%s 2>&1' % LOGFILE)
         t.specify_buffer(SCRIPT, 'md.sh', cache=True)
@@ -220,26 +223,30 @@ class GMX(object):
         t.specify_input_file(os.path.join(self._workarea, self._tpr), cache=True)
 
         # don't cache input files
+        self._inputfiles = list()
         for key, name in FILE_NAMES.iteritems():
-            local  = os.path.join(self.current_simdir, name)
+            local  = os.path.join(self._current_simdir, name)
             remote = SCRIPT_INPUT_NAMES[key]
+            self._inputfiles.append(local)
             t.specify_input_file(local, remote, cache=False)
             print local, '->', remote
 
         # don't cache output files
+        self._outputfiles = list()
         traj = TRAJ_FILES if self._transfer_traj else []
         for key, name in FILE_NAMES.items():
-            local  = os.path.join(self.next_simdir, name)
+            local  = os.path.join(self._next_simdir, name)
             remote = SCRIPT_OUTPUT_NAMES[key]
+            self._outputfiles.append(local)
             t.specify_output_file(local, remote, cache=False)
             print local, '<-', remote
 
         for n in [LOGFILE] + traj:
-            local  = os.path.join(self.current_simdir, n)
+            local  = os.path.join(self._current_simdir, n)
             remote = n
+            self._outputfiles.append(local)
             t.specify_output_file(local, remote, cache=False)
             print local, '<-', remote
-
 
         # cache the binaries
         for n in BINARY_NAMES:
@@ -262,7 +269,11 @@ class GMX(object):
         self._gen += 1
 
     @property
-    def id(self): return self._uuid
+    def uuid(self):
+        """
+        The UUID of this generational task
+        """
+        return self._uuid
 
     @property
     def gen(self):
@@ -270,19 +281,33 @@ class GMX(object):
         return self._gen
 
     @property
-    def current_simdir(self):
+    def _current_simdir(self):
         """
         Get the simulation directory of the current `gen`
         """
         return self._gendir(self._gen)
 
     @property
-    def next_simdir(self):
+    def _next_simdir(self):
         """
         Get the simulation directory of the next `gen`
         """
         g = self._gen + 1
         return self._gendir(g)
+
+    @property
+    def input_files(self):
+        """
+        The current input files
+        """
+        return copy.copy(self._inputfiles)
+
+    @property
+    def output_files(self):
+        """
+        The current output files
+        """
+        return copy.copy(self._outputfiles)
 
     def __call__(self, task=None):
         """
