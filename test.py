@@ -9,8 +9,6 @@ from mdq.md import gmx
 import mdq._wq as _wq
 
 g = gmx.GMX('tests/data', binaries='binaries', time=2, cpus=1)
-t = ccl.Task('ls')
-t = g()
 
 from mdq.workqueue import MkWorkQueue
 
@@ -21,10 +19,11 @@ m = MkWorkQueue()
     # .debug_all()
     .logfile()
     .replicate(8)
+    .generations(9)
 )
 q = m()
 
-q.submit(t)
+q.submit(g)
 
 while not q.empty():
     q.replicate()
