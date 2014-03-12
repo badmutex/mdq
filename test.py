@@ -23,7 +23,6 @@ m = MkWorkQueue()
     .replicate(8)
 )
 q = m()
-# q = _wq.replication.WorkQueue(q, 3)
 
 q.submit(t)
 
@@ -32,10 +31,7 @@ while not q.empty():
     r = q.wait(5)
     if r and r.result == 0:
         print r
-        q.cancel(t)
-        # print q._task_table
-    #     g.incr()
-    #     t = g()
-    #     q.submit(t)
+
+
 
 print 'Done'

@@ -54,6 +54,7 @@ class MkWorkQueue(object):
         if self._logfile is not None:
             q.specify_log(self._logfile)
 
+        ################################################## Task Replication
         if self._replicate is not None:
             q = _wq.replication.WorkQueue(q, maxreplicas=self._replicate)
 

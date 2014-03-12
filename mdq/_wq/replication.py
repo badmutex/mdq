@@ -86,16 +86,12 @@ class _TagSet(object):
 class WorkQueue(decorator.WorkQueue):
     """
     A decorated WorkQueue class.
-    Supports all attributes of the underlying WorkQueue with the addition of two API methods:
-      1. `replicate`
-      2. `cancel`
+    Supports all attributes of the underlying WorkQueue with the addition of the `replicate` method.
 
     This class supports replicating tasks when the available resources outnumber the running tasks.
     When replication is possible a the current running tasks are grouped by their replication count.
     A task is then chosen at random from the group with the smalled count an submited as a new task.
     A call to `replicate` will choose tasks and submit them until the queue is full.
-
-    It is the caller's responsibility to cancel successfully returned tasks.
     """
 
     def __init__(self, q, maxreplicas=1):
@@ -109,6 +105,12 @@ class WorkQueue(decorator.WorkQueue):
         self._tags.add(task.tag)
         self._tasks[task.tag] = task
         return self._q.submit(task)
+
+    def wait(self, *args, **kws):
+        task = self._q.wait(*args, **kws)
+        if task and task.result == 0:
+            self._cancel(task)
+        return task
 
     ################################################################################ Replication
 
@@ -139,6 +141,17 @@ class WorkQueue(decorator.WorkQueue):
         return  self._tasks_in_queue() < self._active_workers() \
             and self._tags.can_duplicate()
 
+    def _cancel(self, task):
+        """
+        Cancels all tasks with the same tag.
+        Returns the number of tasks canceled.
+        """
+        count = 0
+        while self.cancel_by_tasktag(task.tag):
+            count += 1
+        return count
+
+
     ################################################################################ Replication API
 
     def replicate(self):
@@ -152,15 +165,5 @@ class WorkQueue(decorator.WorkQueue):
             if tag is None: break
             task = self._tasks[tag].clone()
             self.submit(task)
-            count += 1
-        return count
-
-    def cancel(self, task):
-        """
-        Cancels all tasks with the same tag.
-        Returns the number of tasks canceled.
-        """
-        count = 0
-        while self.cancel_by_tasktag(task.tag):
             count += 1
         return count
