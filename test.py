@@ -4,7 +4,6 @@ import mdprep
 mdprep.log.debug()
 
 from mdq.md import gmx
-import mdq._wq as _wq
 
 g = gmx.GMX('tests/data', binaries='binaries', time=2, cpus=1)
 
