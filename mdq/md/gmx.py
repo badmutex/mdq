@@ -276,9 +276,13 @@ class GMX(object):
         return self._uuid
 
     @property
-    def gen(self):
+    def generation(self):
         """The current generation"""
         return self._gen
+
+    @property
+    def gen(self):
+        return self.generation
 
     @property
     def _current_simdir(self):
