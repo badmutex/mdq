@@ -6,7 +6,7 @@ from . import decorator
 import collections
 import random
 
-class TagSet(object):
+class _TagSet(object):
     def __init__(self, maxreps=5):
         self._tags = collections.defaultdict(set)
         self._maxreps = maxreps
@@ -84,10 +84,23 @@ class TagSet(object):
         return '<TagSet(maxreps=%s): %s>' % (self._maxreps, d)
 
 class WorkQueue(decorator.WorkQueue):
+    """
+    A decorated WorkQueue class.
+    Supports all attributes of the underlying WorkQueue with the addition of two API methods:
+      1. `replicate`
+      2. `cancel`
+
+    This class supports replicating tasks when the available resources outnumber the running tasks.
+    When replication is possible a the current running tasks are grouped by their replication count.
+    A task is then chosen at random from the group with the smalled count an submited as a new task.
+    A call to `replicate` will choose tasks and submit them until the queue is full.
+
+    It is the caller's responsibility to cancel successfully returned tasks.
+    """
 
     def __init__(self, q, maxreplicas=1):
         super(WorkQueue, self).__init__(q)
-        self._tags = TagSet(maxreps=maxreplicas)
+        self._tags = _TagSet(maxreps=maxreplicas)
         self._tasks = dict() # tag -> Task
 
     ################################################################################ WQ API
