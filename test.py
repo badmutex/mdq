@@ -1,7 +1,5 @@
 #!/usr/bin/python
 
-import work_queue as ccl
-
 import mdprep
 mdprep.log.debug()
 
@@ -16,7 +14,7 @@ m = MkWorkQueue()
 (
     m
     .port(9123)
-    # .debug_all()
+    .debug_all()
     .logfile()
     .replicate(8)
     .generations(9)
