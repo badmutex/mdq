@@ -116,7 +116,7 @@ class GMX(object):
                  binaries=None,
                  transfer_traj=True,
                  time=None, outfreq=1000,
-                 nprocs=None,
+                 cpus=None,
                  gro='conf.gro',
                  top='topol.top',
                  itp='posre.itp',
@@ -131,7 +131,7 @@ class GMX(object):
         self._binaries     = binaries
         self._time         = time if time is not None else -1
         self._outfreq      = outfreq
-        self._nprocs       = nprocs if nprocs is not None else 0
+        self._nprocs       = cpus if cpus is not None else 0
         self._gro          = gro
         self._top          = top
         self._itp          = itp

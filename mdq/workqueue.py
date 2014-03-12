@@ -1,11 +1,12 @@
 __all__ = ['MkWorkQueue']
 
+from . import _wq
 import work_queue as ccl
 import os
 import pwd
 import socket
 
-Task = ccl.Task
+Task        = ccl.Task
 
 class MkWorkQueue(object):
     """
@@ -29,10 +30,16 @@ class MkWorkQueue(object):
         self._debug = None
         self._logfile = None
 
+        # mdq additions
+        self._replicate = None
+
     def __call__(self):
+
+        ################################################## Debugging
         if self._debug is not None:
             ccl.set_debug_flag(self._debug)
 
+        ################################################## Vanilla WorkQueue
         kws = dict()
         kws['port'] = self._port
         kws['catalog'] = self._catalog
@@ -46,6 +53,9 @@ class MkWorkQueue(object):
         q.activate_fast_abort(self._fast_abort)
         if self._logfile is not None:
             q.specify_log(self._logfile)
+
+        if self._replicate is not None:
+            q = _wq.replication.WorkQueue(q, maxreplicas=self._replicate)
 
         return q
 
@@ -126,6 +136,13 @@ class MkWorkQueue(object):
 
     def logfile(self, logfile='wq.log'):
         self._logfile = logfile
+        return self
+
+    def replicate(self, maxreplicates=9):
+        """
+        Use task replication.
+        """
+        self._replicate = maxreplicates
         return self
 
 
