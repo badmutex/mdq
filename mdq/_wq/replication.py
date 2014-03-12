@@ -147,6 +147,7 @@ class WorkQueue(decorator.WorkQueue):
         Returns the number of tasks canceled.
         """
         count = 0
+        self._tags.discard(task.tag)
         while self.cancel_by_tasktag(task.tag):
             count += 1
         return count
