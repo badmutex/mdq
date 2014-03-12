@@ -5,11 +5,13 @@ class WorkQueue(object):
         object.__setattr__(self, '_q', q)
 
     def __getattribute__(self, attr):
-
         try:
             attribute = object.__getattribute__(self, attr)
         except AttributeError:
             q = object.__getattribute__(self, '_q')
-            attribute = object.__getattribute__(q, attr)
+            if isinstance(q, WorkQueue):
+                attribute = WorkQueue.__getattribute__(q, attr)
+            else:
+                attribute = object.__getattribute__(q, attr)
 
         return attribute
