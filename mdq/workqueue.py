@@ -1,6 +1,4 @@
-__all__ = ['MkWorkQueue']
-
-from . import _wq
+# from . import _wq
 import work_queue as ccl
 
 import copy
