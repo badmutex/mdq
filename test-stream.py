@@ -1,5 +1,6 @@
-from mdq.stream    import Fount, Stream, Sink
+from mdq.stream    import Fount, Stream, WorkQueueStream, Sink
 from mdq.workqueue import Task, MkWorkQueue
+import collections
 
 
 class MockFount(Fount):
@@ -10,8 +11,22 @@ class MockFount(Fount):
             sleep = random.randint(1,30)
             yield Task('echo %s;sleep %s' % (i, sleep))
 
-class MockStream(Stream):
-    pass
+class MockGenerations(WorkQueueStream):
+    def __init__(self, *args, **kws):
+        gens = kws.pop('generations', 1)
+        super(MockGenerations, self).__init__(*args, **kws)
+        self._generations = gens
+        self._gens = collections.defaultdict(lambda:0) # uuid -> <int>
+
+    def process(self, task):
+        self._gens[task.tag] += 1
+        if self._gens[task.tag] < self._generations:
+            print 'Continuing', task.tag, self._gens[task.tag]
+            self.submit(task)
+            yield None
+        else:
+            print 'Stopping generation', task.tag, self._gens[task.tag]
+            yield task
 
 if __name__ == '__main__':
 
@@ -28,7 +43,7 @@ if __name__ == '__main__':
         q.specify_log(fd.name)
 
     fount     = MockFount()
-    submit    = MockStream(q, fount)
+    submit    = MockGenerations(q, fount, generations=5)
     sink      = Sink(submit)
 
     for r in sink:
