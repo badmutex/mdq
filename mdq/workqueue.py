@@ -2,11 +2,140 @@ __all__ = ['MkWorkQueue']
 
 from . import _wq
 import work_queue as ccl
+
+import copy
 import os
 import pwd
 import socket
 
-Task        = ccl.Task
+class FileType:
+    INPUT  = ccl.WORK_QUEUE_TASK_INPUT
+    OUTPUT = ccl.WORK_QUEUE_TASK_OUTPUT
+
+class File(object):
+    def __init__(self, local, remote=None, cache=True, filetype=None):
+        assert filetype is not None
+        self._local    = local
+        self._remote   = remote if remote is not None else os.path.basename(local)
+        self._cache    = cache
+        self._filetype = filetype
+
+    @property
+    def local(self):
+        """Name of the file on the local machine"""
+        return self._local
+
+    @property
+    def remote(self):
+        """Name of the file on the worker"""
+        return self._remote
+
+    @property
+    def cached(self):
+        """Is this file to be cached on the remote machine?"""
+        return self._cache
+
+    @property
+    def type(self):
+        """The file type"""
+        return self._filetype
+
+    def add_to_task(self, task):
+        task.specify_file(self.local, remote=self.remote, type=self.type, cache=self.cached)
+
+class Buffer(object):
+    def __init__(self, string, remote, cache=True):
+        self._buffer = string
+        self._remote = remote
+        self._cache = cache
+
+    def add_to_task(self, task):
+        task.specify_buffer(self._buffer, self._remote, cache=self._cache)
+
+class Schedule:
+    """An `enum` of scheduling algorithms"""
+    FCFS  = ccl.WORK_QUEUE_SCHEDULE_FCFS
+    FILES = ccl.WORK_QUEUE_SCHEDULE_FILES
+    TIME  = ccl.WORK_QUEUE_SCHEDULE_TIME
+    RAND  = ccl.WORK_QUEUE_SCHEDULE_RAND
+
+class Task(object):
+    """
+    A pure python description of a task mirroring the `work_queue.Task` API
+    """
+    def __init__(self, command):
+        self._command = command
+        self._files = list()
+        self._named_files = dict()
+        self._algorithm = Schedule.FCFS
+        self._buffer = None
+        self._tag = None
+
+    ################################################################################ WQ API wrapper
+
+    def clone(self):
+        """Create a copy of this task that may be submitted"""
+        return copy.deepcopy(self)
+
+    def specify_algorithm(self, alg):
+        self._algorithm = alg
+
+    def specify_buffer(self, string, remote, cache=True):
+        self._buffer = Buffer(string, remote, cache=cache)
+
+    def specify_file(self, local, remote=None, filetype=None, cache=True, name=None):
+        f = File(local, remote=remote, cache=cache, filetype=filetype)
+        self._files.append(f)
+        if name is not None:
+            self._named_files[name] = f
+
+    def specify_input_file(self, local, remote=None, cache=True, name=None):
+        self.specify_file(local, remote=remote, cache=cache, name=name, filetype=FileType.INPUT)
+
+    def specify_output_file(self, local, remote=None, cache=True, name=None):
+        self.specify_file(local, remote=remote, cache=cache, name=name, filetype=FileType.OUTPUT)
+
+    def specify_tag(self, tag):
+        self._tag = tag
+
+    @property
+    def command(self):
+        """The command to execute"""
+        return self._command
+
+    def _filter_files_by(self, filetype):
+        return filter(lambda f: f.type == filetype, self._files)
+
+    ################################################################################
+
+    @property
+    def input_files(self):
+        return self._filter_files_by(FileType.INPUT)
+
+    @property
+    def output_files(self):
+        return self._filter_files_by(FileType.OUTPUT)
+
+    @property
+    def named_files(self):
+        return self._named_files
+
+    ################################################################################ To WQ Tasks
+
+    def to_task(self):
+        """
+        Return a `work_queue.Task` object that can be submitted to a `work_queue.WorkQueue`
+        """
+        task = ccl.Task(self.command)
+        for f in self._files:
+            f.add_to_task(task)
+        task.specify_algorithm(self.algorithm)
+        if self._buffer is not None:
+            self._buffer.add_to_task(task)
+        if self._tag is not None:
+            task.specify_tag(self._tag)
+        return task
+
 
 class MkWorkQueue(object):
     """
