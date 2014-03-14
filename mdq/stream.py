@@ -3,34 +3,50 @@ import work_queue as ccl
 import uuid
 
 
-class Fount(object):
-
+class Unique(object):
     def __init__(self):
         self._uuid = uuid.uuid1()
 
+    def update_tag(self, task):
+        if task.tag:
+            task.specify_tag('%s:%s' % (task.tag, self.id))
+        else:
+            task.specify_tag(self.id)
+
+    def previous_tag(self, tag):
+        uuids = tag.split(':')
+        if len(uuids) > 1:
+            return ':'.join(uuids[:-2])
+        else:
+            return uuid[0]
+
+    @property
+    def id(self): return str(self._uuid)
+
+class Generator(object):
+    def generate(self):
+        raise NotImplemented
+
+class Processor(object):
+    def process(self, task):
+        yield task
+
+
+class Fount(Unique, Generator):
     def __iter__(self):
-        # MOCKUP
-        for i in xrange(10):
-            task = ccl.Task('echo %s; sleep 2' % i)
-            task.specify_tag(str(self._uuid))
+        for task in self.generate():
+            task.specify_tag('%s' % uuid.uuid1())
             yield task
 
-
-class Stream(object):
-    def __init__(self, q):
+class Stream(Unique, Processor):
+    def __init__(self, q, source, wait=5):
+        super(Stream   , self).__init__()
         self._q = q
-        self._fountain = None
-
-        self._uuid = uuid.uuid1()
-
-    def connect(self, source):
         self._fountain = source
+        self._wait = wait
 
-    def process(self, result):
-        """
-        To be implemented in a subclass
-        """
-        return result
+    @property
+    def wq(self): return self._q
 
     def __iter__(self):
 
@@ -41,21 +57,22 @@ class Stream(object):
         
         count = 0
         for t in self._fountain:
-            t.specify_tag('%s:%s' % (t.tag, self._uuid))
+            print 'submitting', t.tag
             self._q.submit(t)
             count += 1
 
         while count > 0:
-            r = self._q.wait(5)
+            self._q.replicate()
+            r = self._q.wait(self._wait)
             if r:
                 count -= 1
-                yield self.process(r)
+                for result in self.process(r):
+                    yield result
 
-class Sink(object):
+class Sink(Unique, Processor):
     def __init__(self, source):
+        super(Sink, self).__init__()
         self._source = source
-
-        self._uuid = uuid.uuid1()
 
     def __iter__(self):
         for t in self._source:
