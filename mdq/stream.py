@@ -7,19 +7,6 @@ class Unique(object):
     def __init__(self):
         self._uuid = uuid.uuid1()
 
-    def update_tag(self, task):
-        if task.tag:
-            task.specify_tag('%s:%s' % (task.tag, self.id))
-        else:
-            task.specify_tag(self.id)
-
-    def previous_tag(self, tag):
-        uuids = tag.split(':')
-        if len(uuids) > 1:
-            return ':'.join(uuids[:-2])
-        else:
-            return uuid[0]
-
     @property
     def id(self): return str(self._uuid)
 
@@ -64,10 +51,10 @@ class WorkQueueStream(Stream):
         self.wq.submit(task)
         self._count += 1
 
-    def _empty(self):
+    def empty(self):
         return not self._count > 0
 
-    def _wait(self):
+    def wait(self):
         result = self.wq.wait(self._timeout)
         if result:
             self._count -= 1
@@ -79,10 +66,9 @@ class WorkQueueStream(Stream):
             print 'submitting', t.tag
             self.submit(t)
 
-        while not self._empty():
-            self._q.replicate()
-            print 'count', self._count
-            r = self._wait()
+        while not self.empty():
+            self.wq.replicate()
+            r = self.wait()
             if r:
                 for result in self.process(r):
                     if result is None: continue

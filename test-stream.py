@@ -33,7 +33,7 @@ if __name__ == '__main__':
     q = (
         MkWorkQueue()
         .port(9123)
-        .debug_all()
+        # .debug_all()
         .replicate(8)
         ()
     )
@@ -43,8 +43,8 @@ if __name__ == '__main__':
         q.specify_log(fd.name)
 
     fount     = MockFount()
-    submit    = MockGenerations(q, fount, generations=5)
+    submit    = MockGenerations(q, fount, generations=2)
     sink      = Sink(submit)
 
     for r in sink:
-        print r.tag
+        print 'Complete', r.tag
