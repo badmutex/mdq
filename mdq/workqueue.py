@@ -46,6 +46,10 @@ class File(object):
         """Name of the file on the local machine"""
         return self._local
 
+    @local.setter
+    def local(self, newname):
+        self._local = newname
+
     @property
     def remote(self):
         """Name of the file on the worker"""
