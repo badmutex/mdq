@@ -1,6 +1,8 @@
 # from . import _wq
 import work_queue as ccl
 
+from mdprep.util import StringIO
+
 import copy
 import os
 import pwd
@@ -38,6 +40,23 @@ class File(object):
                  cache = self._cache,
                  filetype = self._filetype)
 
+    def to_yaml(self):
+        si = StringIO()
+        self.add_yaml(si)
+        s = si.getvalue()
+        si.close()
+        return s
+
+    def add_yaml(self, builder):
+        """Add the yaml representation of this File to string builder"""
+        si = builder
+        si.writeln('file:')
+        si.indent()
+        si.writeln('local:  %s' % self._local)
+        si.writeln('remote:  %s' % self._remote)
+        si.writeln('cache:  %s' % self._cache)
+        si.writeln('filetype:  %s' % self._filetype)
+        si.dedent()
 
     @property
     def local(self):
@@ -142,6 +161,32 @@ class Task(object):
     @property
     def named_files(self):
         return self._named_files
+
+    def to_yaml(self):
+        """
+        Represent this Task as a yaml string
+        """
+        si = StringIO()
+        si.writeln('task:')
+        si.indent()
+        si.writeln('command: %s' % self.command)
+        # import pdb;pdb.set_trace()
+        if self._files:
+            si.writeln('files:')
+            si.indent()
+            for f in self._files:
+                si.writeln('- ')
+                si.indent()
+                f.add_yaml(si)
+                si.dedent()
+            si.dedent()
+
+        s = si.getvalue()
+        si.close()
+        return s
+
+    def __str__(self):
+        return self.to_yaml()
 
     ################################################################################ To WQ Tasks
 
