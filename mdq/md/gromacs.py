@@ -1,5 +1,6 @@
 from .. import command
 from .. import stream
+from .. import workqueue as wq
 
 import mdprep
 
@@ -88,124 +89,68 @@ guamps_get = mdprep.process.OptCommand('guamps_get')
 guamps_set = mdprep.process.OptCommand('guamps_set')
 
 
-class SimulationUnit(stream.Unique):
+class Task(stream.Unique):
     """
     This represents everything needed to run a simulation.
     """
 
     def __init__(self,
                  x=None, v=None, t=None, tpr=None,
-                 binaries=None, outputdir='mdq', seed=None, cpus=None, verbose=False
+                 outputdir='mdq'
                  ):
 
         super(SimulationUnit, self).__init__()
 
-        # simulation data
-        self._x = x # positions
-        self._v = v # velocity
-        self._t = t # start time
-        self._tpr = tpr
-
-        # for `running` the simulation
-        self._binaries = binaries
+        self._x         = x # positions
+        self._v         = v # velocity
+        self._t         = t # start time
+        self._tpr       = tpr
         self._outputdir = outputdir
-        self._seed = seed if seed is not None else random.randint(1, 10**10)
-        self._cpus = cpus if cpus is not None else 0
-        self._verbose = verbose
 
-        # results to transfer back
-        self._save_trr = 'traj.trr'
-        self._save_xtc = 'traj.xtc'
-        self._save_edr = 'ener.edr'
-        self._save_log = 'md.log'
+        self._generation = 0
 
-    def _save_XXX_default(self, suffix):
-        return dict(trr = 'traj.trr',
-                    xtc = 'traj.xtc',
-                    edr = 'ener.edr',
-                    log = 'md.log')[suffix]
+    @property
+    def input_files(self):
+        return dict(x=self._x, v=self._v, t=self._t)
 
-    def _save_XXX(self, suffix, save):
-        attr = '_save_%s' % suffix
-        curr = getattr(self, attr)
+    @property
+    def output_files(self):
+        return dict(x = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['x']),
+                    v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v']),
+                    t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t']),
+                    )
 
-        # if save is None: toggle
-        # if save is bool: default or no change
-        # if save is str : set value
+    def extend(self):
+        self._x = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['x'])
+        self._v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v'])
+        self._t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t'])
+        self._generation += 1
 
-        if save is None and curr:
-            name = None
+    @property
+    def generation(self):
+        """The current generation"""
+        return self._generation
 
-        elif save is None and not curr:
-            name = self._save_XXX_default(suffix)
+    @property
+    def outputdir(self):
+        """The output directory for the current generation"""
+        return os.path.join(self._outputdir, str(self._generation))
 
-        elif isinstance(save, bool) and save:
-            name = self._save_XXX_default(suffix)
+    def to_task(self):
+        mdprep.util.ensure_dir(self.outputdir)
 
-        elif isinstance(save, bool) and not save:
-            name = curr
+        cmd = 'bash %(script)s > %(log)s' % dict(script = SCRIPT_NAME, log = LOGFILE)
+        task = wq.Task(cmd)
 
-        elif isinstance(save, str):
-            ext = os.path.splitext(save)[-1][1:] # [-1]: get extension, [1:]: drop period from extension
-            assert ext == suffix, 'Unexpected suffix for %s: got %s, expected %s' % (save, ext, suffix)
-            name = save
+        # input files
+        task.specify_input_file(self._x  , SCRIPT_INPUT_NAMES['x']  , cache=False, named='x_i')
+        task.specify_input_file(self._v  , SCRIPT_INPUT_NAMES['v']  , cache=False, named='v_i')
+        task.specify_input_file(self._t  , SCRIPT_INPUT_NAMES['t']  , cache=False, named='t_i')
+        task.specify_input_file(self._tpr, SCRIPT_INPUT_NAMES['tpr'], cache=True , named='tpr')
 
-        else: raise ValueError, 'Unknown value %s of type %s' % (save, type(save))
+        # output files
+        task.specify_output_file(self.output_files['x'], SCRIPT_OUTPUT_NAMES['x']  , cache=False, named='x_o')
+        task.specify_output_file(self.output_files['v'], SCRIPT_OUTPUT_NAMES['v']  , cache=False, named='v_o')
+        task.specify_output_file(self.output_files['t'], SCRIPT_OUTPUT_NAMES['t']  , cache=False, named='t_o')
 
-        setattr(self, attr, name)
-
-
-    def save_trr(self, save=None): self._save_XXX('trr', save)
-    def save_xtc(self, save=None): self._save_XXX('xtc', save)
-    def save_edr(self, save=None): self._save_XXX('edr', save)
-    def save_log(self, save=None): self._save_XXX('log', save)
-
-
-    def _add_save_files_to_task(self, task):
-        types = 'trr xtc edr log'.split()
-        attrs = map(lambda suf: '_save_%s' % suf, types)
-        for a in attrs:
-            remote = getattr(self, a)
-            if remote:
-                local = os.path.join(self._outputdir, remote)
-                task.specify_output_file(local, remote, cache=False)
-
-    def task(self):
-        """Create a WorkQueue Task"""
-
-        from .. import workqueue
-        task = workqeue.Task('bash %s > %s' % (SCRIPT_NAME, LOGFILE))
-        self._add_save_files_to_task(task)
-
-    def run(self):
-        tpr = os.path.abspath(self._tpr)
-        with mdprep.util.StackDir(self._outputdir), mdprep.gmx.NoAutobackup():
-            self._binaries.mdrun(s=tpr, nt=self._cpus, v=self._verbose)
-
-class SimulationGeneration(object):
-    def __init__(self, generations=1):
-        self._generations = generations
-        self._units = dict() # unit uuid -> unit
-        self._gens  = dict() # unit uuid -> <int>
-
-
-
-class SimulationEngine(object):
-    def __init__(self, q, generations=1):
-        self._q = q
-        self._generations = generations
-        self._units = dict() # unit uuid -> unit
-
-
-
-
-
-if __name__ == '__main__':
-
-    class Binaries(object):
-        def __init__(self):
-            self.mdrun = mdprep.mdrun
-
-    mdprep.log.debug()
-    sim = SimulationUnit(tpr='tests/data/topol.tpr', outputdir='/tmp/mdq', verbose=True, binaries=Binaries())
-    sim.run()
+        return task
