@@ -9,8 +9,14 @@ import pwd
 import socket
 
 class FileType:
-    INPUT  = ccl.WORK_QUEUE_TASK_INPUT
-    OUTPUT = ccl.WORK_QUEUE_TASK_OUTPUT
+    INPUT  = ccl.WORK_QUEUE_INPUT
+    OUTPUT = ccl.WORK_QUEUE_OUTPUT
+
+    @classmethod
+    def str(cls, ftype):
+        return {FileType.INPUT : 'INPUT',
+                FileType.OUTPUT: 'OUTPUT'
+            }[ftype]
 
 class File(object):
     def __init__(self, local, remote=None, cache=True, filetype=None):
