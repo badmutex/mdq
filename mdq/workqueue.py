@@ -32,7 +32,7 @@ class MkWorkQueue(object):
 
         # mdq additions
         self._replicate = None
-        self._generational = False
+        self._generations = False
 
     def __call__(self):
 
