@@ -83,6 +83,9 @@ class File(object):
         return self._filetype
 
     def add_to_task(self, task):
+        """
+        Add this file a `work_queue.Task`
+        """
         task.specify_file(self.local, remote=self.remote, type=self.type, cache=self.cached)
 
 class Buffer(object):
@@ -92,6 +95,7 @@ class Buffer(object):
         self._cache = cache
 
     def add_to_task(self, task):
+        """Add this buffer to a `work_queue.Task`"""
         task.specify_buffer(self._buffer, self._remote, cache=self._cache)
 
 class Schedule:
