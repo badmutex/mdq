@@ -76,20 +76,12 @@ class Sink(Unique, Processor):
 
     def __iter__(self):
         for t in self._source:
-            t.specify_tag('%s:%s' % (t.tag, self._uuid))
-            yield t, t.tag
+            for r in self.process(t):
+                yield r
 
-
-if __name__ == '__main__':
-    ccl.set_debug_flag('all')
-    q       = ccl.WorkQueue(9123)
-    fount   = Fount()        # some source of Tasks
-    stream0 = Stream(q)      # some execution engin
-    stream0.connect(fount)   #+that pulls from upstream
-    stream1 = Stream(q)      # another execution engin
-    stream1.connect(stream0) #+that may resubmit tasks
-    sink    = Sink(stream1)  # where to dump final results
-
-    # the Sink pulls the results from upstream
-    for result in sink:
-        print result
+    def __call__(self):
+        """
+        Pull all the results
+        """
+        for _ in self:
+            pass
