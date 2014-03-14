@@ -26,6 +26,21 @@ class File(object):
         self._cache    = cache
         self._filetype = filetype
 
+    def __str__(self):
+        return '<File local=%(local)r remote=%(remote)r cache=%(cache)s type=%(filetype)s>' % \
+            dict(local    = self._local,
+                 remote   = self._remote,
+                 cache    = self._cache,
+                 filetype = FileType.str(self._filetype))
+
+    def __repr__(self):
+        return 'File(%(local)r, remote=%(remote)r, cache=%(cache)r, filetype=%(filetype)s)' % \
+            dict(local = self._local,
+                 remote = self._remote,
+                 cache = self._cache,
+                 filetype = self._filetype)
+
+
     @property
     def local(self):
         """Name of the file on the local machine"""
