@@ -20,7 +20,7 @@ TRAJ_FILES          = ['traj.trr',
 
 SELECTIONS          = dict(positions='x', velocities='v',time='t')
 FILE_NAMES          = dict(x = 'x.gps'  , v = 'v.gps'  , t = 't.gps')
-SCRIPT_INPUT_NAMES  = dict(x = 'x_i.gps', v = 'v_i.gps', t = 't_i.gps')
+SCRIPT_INPUT_NAMES  = dict(x = 'x_i.gps', v = 'v_i.gps', t = 't_i.gps', tpr='topol.tpr', cpus='cpus.gps')
 SCRIPT_OUTPUT_NAMES = dict(x = 'x_o.gps', v = 'v_o.gps', t = 't_o.gps')
 
 SCRIPT_NAME = 'md.sh' # name of the script on the worker
@@ -37,6 +37,8 @@ export PATH=$PWD:$PATH
 x_i=%(x_i)s
 v_i=%(v_i)s
 t_i=%(t_i)s
+tpr=%(tpr)s
+cpus=%(cpus)s
 
 # output files
 x_o=%(x_o)s
@@ -47,12 +49,12 @@ t_o=%(t_o)s
 export GMX_MAXBACKUP=-1
 
 # continue from previous positions, velocities, and time
-guamps_set -f topol.tpr -s positions  -i $x_i
-guamps_set -f topol.tpr -s velocities -i $v_i
-guamps_set -f topol.tpr -s time       -i $t_i
+guamps_set -f $tpr -s positions  -i $x_i
+guamps_set -f $tpr -s velocities -i $v_i
+guamps_set -f $tpr -s time       -i $t_i
 
 # run with given number of processors
-mdrun -nt $(cat processors.gps)
+mdrun -nt $(cat $cpus) -s $tpr
 
 # retrieve the positions, velocities, and time
 guamps_get -f traj.trr -s positions  -o $x_o
@@ -63,6 +65,8 @@ guamps_get -f traj.trr -s time       -o $t_o
     x_i = SCRIPT_INPUT_NAMES ['x'],
     v_i = SCRIPT_INPUT_NAMES ['v'],
     t_i = SCRIPT_INPUT_NAMES ['t'],
+    tpr = SCRIPT_INPUT_NAMES ['tpr'],
+    cpus= SCRIPT_INPUT_NAMES ['cpus'],
     x_o = SCRIPT_OUTPUT_NAMES['x'],
     v_o = SCRIPT_OUTPUT_NAMES['v'],
     t_o = SCRIPT_OUTPUT_NAMES['t'],
@@ -96,7 +100,7 @@ class Task(stream.Unique):
 
     def __init__(self,
                  x=None, v=None, t=None, tpr=None,
-                 outputdir='mdq'
+                 outputdir='mdq', cpus=1
                  ):
 
         super(SimulationUnit, self).__init__()
@@ -106,12 +110,13 @@ class Task(stream.Unique):
         self._t         = t # start time
         self._tpr       = tpr
         self._outputdir = outputdir
+        self._cpus      = cpus
 
         self._generation = 0
 
     @property
     def input_files(self):
-        return dict(x=self._x, v=self._v, t=self._t)
+        return dict(x=self._x, v=self._v, t=self._t, tpr=self._tpr)
 
     @property
     def output_files(self):
