@@ -163,6 +163,20 @@ class Task(stream.Unique):
                     )
 
     def extend(self):
+        """
+        Update the input/output file names
+
+        Indended usage is something like:
+
+        # >>> gmx = mdq.md.gromacs.Task(x='x.gps',v='v.gps',t='t.gps')
+        # >>> worker = mdq.workqueue.WorkerEmulator()
+        # >>> for gen in xrange(10) # run for 10 generations
+        # ...     task = gmx.to_task()
+        # ...     worker(task)
+        # ...     assert task.result == 0
+        # ...     gmx.extend()
+
+        """
         self._x = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['x'])
         self._v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v'])
         self._t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t'])
