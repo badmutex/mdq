@@ -6,7 +6,10 @@ import mdprep.util
 import copy
 import os
 import pwd
+import shutil
 import socket
+import subprocess
+import tempfile
 
 class FileType:
     INPUT  = ccl.WORK_QUEUE_INPUT
@@ -245,6 +248,85 @@ class Task(object):
             task.specify_tag(self._tag)
         return task
 
+class WorkerEmulator(object):
+    """
+    Emulate a work_queue_worker environment, allowing Tasks to be run directly.
+    Mainly indended for debugging purposes
+    """
+
+    def __init__(self):
+        self._workarea = tempfile.mkdtemp()
+        print 'WorkerEmulartor working in:', self._workarea
+
+    def _copy_path(self, src, dst):
+        if   os.path.isfile(src): shutil.copy    (src, dst)
+        elif os.path.isdir (src): shutil.copytree(src, dst)
+        else: raise ValueError, '%s is neither file nor directory' % src
+
+    def _unlink_path(self, path):
+        if   os.path.isfile(path): os.unlink    (path)
+        elif os.path.isdir(path) : shutil.rmtree(path)
+        else: raise ValueError, '%s is neither file nor directory' % path
+
+    def path(self, remote):
+        return os.path.join(self._workarea, remote)
+
+    def put(self, obj):
+        if isinstance(obj, File):
+            self.put_file(obj)
+        elif isinstance(obj, Buffer):
+            self.put_buffer(obj)
+        else: raise ValueError, 'Unknow type %s' % type(obj)
+
+    def put_buffer(self, buffer):
+        dst = self.path(buffer.remote)
+        with open(dst, 'w') as fd:
+            fd.write(buffer.data)
+
+    def put_file(self, file):
+        src = file.local
+        dst = os.path.join(self._workarea, file.remote)
+        self._copy_path(src, dst)
+
+    def run(self, command):
+        p = subprocess.Popen(command, shell=True,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             cwd=self._workarea)
+        out, err = p.communicate()
+        output = out + err
+        if p.returncode is not 0:
+            raise subprocess.CalledProcessError(p.returncode, command, output)
+        return output, p.returncode
+
+    def get(self, file):
+        src = self.path(file.remote)
+        dst = file.local
+        self._copy_path(src, dst)
+
+    def clear(self, file):
+        if not file.cached:
+            self._unlink_path(self.path(file.remote))
+
+    def __call__(self, task):
+        # put input files
+        for file in task.input_files:
+            self.put(file)
+
+        # run
+        task._output, task._result = self.run(task.command)
+
+        # get output files
+        for file in task.output_files:
+            self.get(file)
+
+        # cleanup
+        for file in task.files:
+            self.clear(file)
+
+
+    def __del__(self):
+        import shutil
+        shutil.rmtree(self._workarea)
 
 class MkWorkQueue(object):
     """
