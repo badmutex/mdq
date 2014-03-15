@@ -97,6 +97,9 @@ class Task(stream.Unique):
     """
     This represents everything needed to run a simulation.
 
+    The following example runs three generations of a simulations.
+    In order to run, the binaries (mdrun, guamps_{g,s}et) need to be in the PATH
+
     >>> import mdq.util
     >>> import mdq.workqueue as wq
     >>> import mdq.md.gromacs as gmx
@@ -107,12 +110,13 @@ class Task(stream.Unique):
     ...                )
     >>> for name in gmx.EXECUTABLES:
     ...     sim.add_binary(mdq.util.find_in_path(name))
-    >>> task = sim.to_task()
     >>> worker = wq.WorkerEmulator() # doctest:+ELLIPSIS
     WorkerEmulator working ...
-    >>> worker(task)
-    >>> task.result
-    0
+    >>> for gen in xrange(3): # 3 generations
+    ...   task = sim.to_task()
+    ...   worker(task)
+    ...   assert task.result == 0
+    ...   sim.extend()
 
     """
 
