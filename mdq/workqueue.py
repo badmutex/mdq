@@ -330,7 +330,8 @@ class WorkerEmulator(object):
         out, err = p.communicate()
         output = out + err
         if p.returncode is not 0:
-            raise subprocess.CalledProcessError(p.returncode, command, output)
+            raise ValueError, output
+            # raise subprocess.CalledProcessError(p.returncode, command, output)
         return output, p.returncode
 
     def get(self, file):
