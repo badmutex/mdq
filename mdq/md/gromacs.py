@@ -113,6 +113,24 @@ class Task(stream.Unique):
         self._cpus      = cpus
 
         self._generation = 0
+        self._binaries   = list()
+
+    def add_binary(self, path):
+        self._binaries.append(path)
+
+    def check_binaries(self):
+        """Checks that the required executables (EXECUTABLES) have been added"""
+        found    = 0
+        notfound = list()
+        for path in self._binaries:
+            base = os.path.basename(path)
+            for name in EXECUTABLES:
+                if name == base:
+                    found += 1
+                    continue
+                notfound.append(name)
+        if not found == len(EXECUTABLES):
+            raise ValueError, 'Binaries for %s were not added' % ', '.join(notfound)
 
     @property
     def input_files(self):
@@ -148,14 +166,20 @@ class Task(stream.Unique):
         task = wq.Task(cmd)
 
         # input files
-        task.specify_input_file(self._x  , SCRIPT_INPUT_NAMES['x']  , cache=False, named='x_i')
-        task.specify_input_file(self._v  , SCRIPT_INPUT_NAMES['v']  , cache=False, named='v_i')
-        task.specify_input_file(self._t  , SCRIPT_INPUT_NAMES['t']  , cache=False, named='t_i')
-        task.specify_input_file(self._tpr, SCRIPT_INPUT_NAMES['tpr'], cache=True , named='tpr')
+        task.specify_buffer(SCRIPT_CONTENTS, SCRIPT_NAME              , cache=True)
+        task.specify_buffer(str(self._cpus), SCRIPT_INPUT_NAMES['cpus'],cache=True)
+        task.specify_input_file(self._x    , SCRIPT_INPUT_NAMES['x']  , cache=False, name='x_i')
+        task.specify_input_file(self._v    , SCRIPT_INPUT_NAMES['v']  , cache=False, name='v_i')
+        task.specify_input_file(self._t    , SCRIPT_INPUT_NAMES['t']  , cache=False, name='t_i')
+        task.specify_input_file(self._tpr  , SCRIPT_INPUT_NAMES['tpr'], cache=True , name='tpr')
 
         # output files
-        task.specify_output_file(self.output_files['x'], SCRIPT_OUTPUT_NAMES['x']  , cache=False, named='x_o')
-        task.specify_output_file(self.output_files['v'], SCRIPT_OUTPUT_NAMES['v']  , cache=False, named='v_o')
-        task.specify_output_file(self.output_files['t'], SCRIPT_OUTPUT_NAMES['t']  , cache=False, named='t_o')
+        task.specify_output_file(self.output_files['x'], SCRIPT_OUTPUT_NAMES['x']  , cache=False, name='x_o')
+        task.specify_output_file(self.output_files['v'], SCRIPT_OUTPUT_NAMES['v']  , cache=False, name='v_o')
+        task.specify_output_file(self.output_files['t'], SCRIPT_OUTPUT_NAMES['t']  , cache=False, name='t_o')
+
+        self.check_binaries()
+        for path in self._binaries:
+            task.specify_input_file(path, cache=True)
 
         return task
