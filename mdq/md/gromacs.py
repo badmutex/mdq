@@ -104,8 +104,7 @@ class Task(stream.Unique):
     ...                v='tests/data/mdq/0/v.gps',
     ...                t='tests/data/mdq/0/t.gps',
     ...                tpr='tests/data/topol.tpr',
-    ...                cpus=0                    ,
-    ...                outputdir='/tmp/mdqtest'  )
+    ...                )
     >>> for name in gmx.EXECUTABLES:
     ...     sim.add_binary(mdq.util.find_in_path(name))
     >>> task = sim.to_task()
@@ -118,8 +117,8 @@ class Task(stream.Unique):
     """
 
     def __init__(self,
-                 x=None, v=None, t=None, tpr=None,
-                 outputdir='mdq', cpus=1
+                 x='x.gps', v='v.gps', t='t.gps', tpr='topol.tpr',
+                 outputdir=None, cpus=0
                  ):
 
         super(Task, self).__init__()
@@ -128,7 +127,7 @@ class Task(stream.Unique):
         self._v         = v # velocity
         self._t         = t # start time
         self._tpr       = tpr
-        self._outputdir = outputdir
+        self._outputdir = outputdir if outputdir is not None else os.path.splitext(tpr)[0] + '.mdq'
         self._cpus      = cpus
 
         self._generation = 0
