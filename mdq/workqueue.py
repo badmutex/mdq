@@ -154,7 +154,7 @@ class Task(object):
         self._files = list()
         self._named_files = dict()
         self._algorithm = Schedule.FCFS
-        self._buffer = None
+        self._buffers = list()
         self._tag = None
         self._output = ''
         self._result = -1
@@ -169,7 +169,7 @@ class Task(object):
         self._algorithm = alg
 
     def specify_buffer(self, string, remote, cache=True):
-        self._buffer = Buffer(string, remote, cache=cache)
+        self._buffers.append(Buffer(string, remote, cache=cache))
 
     def specify_file(self, local, remote=None, filetype=None, cache=True, name=None):
         f = File(local, remote=remote, cache=cache, filetype=filetype)
@@ -206,18 +206,15 @@ class Task(object):
 
     @property
     def input_files(self):
-        files =  self._filter_files_by(FileType.INPUT)
-        if self._buffer is not None:
-            files.append(self._buffer)
-        return files
+        return self._filter_files_by(FileType.INPUT) + self._buffers
 
     @property
     def output_files(self):
         return self._filter_files_by(FileType.OUTPUT)
 
     @property
-    def buffer(self):
-        return self._buffer
+    def buffers(self):
+        return self._buffers
 
     @property
     def files(self):
@@ -247,6 +244,16 @@ class Task(object):
                 si.dedent()
             si.dedent()
 
+        if self._buffers:
+            si.writeln('buffers:')
+            si.indent()
+            for b in self._buffers:
+                si.writeln('-')
+                si.indent()
+                b.add_yaml(si)
+                si.dedent()
+            si.dedent()
+
         s = si.getvalue()
         si.close()
         return s
@@ -264,8 +271,8 @@ class Task(object):
         for f in self._files:
             f.add_to_task(task)
         task.specify_algorithm(self.algorithm)
-        if self._buffer is not None:
-            self._buffer.add_to_task(task)
+        for b in self._buffers:
+            b.add_to_task(task)
         if self._tag is not None:
             task.specify_tag(self._tag)
         return task
