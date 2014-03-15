@@ -89,8 +89,8 @@ class File(object):
         task.specify_file(self.local, remote=self.remote, type=self.type, cache=self.cached)
 
 class Buffer(object):
-    def __init__(self, string, remote, cache=True):
-        self._buffer = string
+    def __init__(self, data, remote, cache=True):
+        self._data = data
         self._remote = remote
         self._cache = cache
 
