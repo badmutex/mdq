@@ -181,7 +181,10 @@ class Task(object):
 
     @property
     def input_files(self):
-        return self._filter_files_by(FileType.INPUT)
+        files =  self._filter_files_by(FileType.INPUT)
+        if self._buffer is not None:
+            files.append(self._buffer)
+        return files
 
     @property
     def output_files(self):
