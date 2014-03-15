@@ -7,16 +7,15 @@ import mdprep
 import os
 import random
 import textwrap
-import uuid
 
-BINARY_NAMES        = ['guamps_get',
-                       'guamps_set',
-                       'mdrun']
 
-TRAJ_FILES          = ['traj.trr',
-                       'traj.xtc',
-                       'ener.edr',
-                       'md.log']
+EXECUTABLES = [
+      'guamps_get'
+    , 'guamps_set'
+    , 'mdrun'
+]
+
+
 TRAJ_FILES          = dict(trr='traj.trr',
                            xtc='traj.xtc',
                            edr='ener.edr',
@@ -76,13 +75,6 @@ guamps_get -f traj.trr -s time       -o $t_o
     t_o = SCRIPT_OUTPUT_NAMES['t'],
     )
 )
-
-
-EXECUTABLES = [
-      'guamps_get'
-    , 'guamps_set'
-    , 'mdrun'
-]
 
 
 
