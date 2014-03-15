@@ -191,6 +191,15 @@ class Task(object):
         return self._filter_files_by(FileType.OUTPUT)
 
     @property
+    def buffer(self):
+        return self._buffer
+
+    @property
+    def files(self):
+        """The list of input and output files"""
+        return self.input_files + self.output_files
+
+    @property
     def named_files(self):
         return self._named_files
 
