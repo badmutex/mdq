@@ -17,6 +17,10 @@ TRAJ_FILES          = ['traj.trr',
                        'traj.xtc',
                        'ener.edr',
                        'md.log']
+TRAJ_FILES          = dict(trr='traj.trr',
+                           xtc='traj.xtc',
+                           edr='ener.edr',
+                           log='md.log'  )
 
 SELECTIONS          = dict(positions='x', velocities='v',time='t')
 FILE_NAMES          = dict(x = 'x.gps'  , v = 'v.gps'  , t = 't.gps')
@@ -108,6 +112,7 @@ class Task(stream.Unique):
     ...                t='tests/data/mdq/0/t.gps',
     ...                tpr='tests/data/topol.tpr',
     ...                )
+    >>> sim.keep_trajfiles()
     >>> for name in gmx.EXECUTABLES:
     ...     sim.add_binary(mdq.util.find_in_path(name))
     >>> worker = wq.WorkerEmulator() # doctest:+ELLIPSIS
@@ -136,6 +141,32 @@ class Task(stream.Unique):
 
         self._generation = 0
         self._binaries   = list()
+        self._trajfiles  = list()
+
+    def _keep_XXX(self, suffix):
+        """Mark a simulation output file to be transferred back from the worker"""
+        self._trajfiles.append(TRAJ_FILES[suffix])
+
+    def keep_trr(self):
+        """Keep the trajectory .trr file"""
+        self._keep_XXX('trr')
+
+    def keep_xtc(self):
+        """Keep the trajecotry .xtc file"""
+        self._keep_XXX('xtc')
+
+    def keep_edr(self):
+        """Keep the energy .edr file"""
+        self._keep_XXX('edr')
+
+    def keep_log(self):
+        """Keep the simulation .log file"""
+        self._keep_XXX('log')
+
+    def keep_trajfiles(self):
+        """Transfer back all the trajectory output files"""
+        for suffix in TRAJ_FILES.keys():
+            self._keep_XXX(suffix)
 
     def add_binary(self, path):
         self._binaries.append(path)
@@ -182,6 +213,10 @@ class Task(stream.Unique):
         """The output directory for the current generation"""
         return os.path.join(self._outputdir, str(self._generation))
 
+    def output_path(self, name):
+        """Return the local filename"""
+        return os.path.join(self.outputdir, os.path.basename(name))
+
     def to_task(self):
         mdprep.util.ensure_dir(self.outputdir)
 
@@ -204,5 +239,8 @@ class Task(stream.Unique):
         self.check_binaries()
         for path in self._binaries:
             task.specify_input_file(path, cache=True)
+
+        for name in self._trajfiles:
+            task.specify_output_file(self.output_path(name), name, cache=False)
 
         return task
