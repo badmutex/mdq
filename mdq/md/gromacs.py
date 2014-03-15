@@ -103,7 +103,7 @@ class Task(stream.Unique):
                  outputdir='mdq', cpus=1
                  ):
 
-        super(SimulationUnit, self).__init__()
+        super(Task, self).__init__()
 
         self._x         = x # positions
         self._v         = v # velocity
