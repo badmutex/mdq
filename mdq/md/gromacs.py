@@ -96,6 +96,25 @@ guamps_set = mdprep.process.OptCommand('guamps_set')
 class Task(stream.Unique):
     """
     This represents everything needed to run a simulation.
+
+    >>> import mdq.util
+    >>> import mdq.workqueue as wq
+    >>> import mdq.md.gromacs as gmx
+    >>> sim = gmx.Task(x='tests/data/mdq/0/x.gps',
+    ...                v='tests/data/mdq/0/v.gps',
+    ...                t='tests/data/mdq/0/t.gps',
+    ...                tpr='tests/data/topol.tpr',
+    ...                cpus=0                    ,
+    ...                outputdir='/tmp/mdqtest'  )
+    >>> for name in gmx.EXECUTABLES:
+    ...     sim.add_binary(mdq.util.find_in_path(name))
+    >>> task = sim.to_task()
+    >>> worker = wq.WorkerEmulator() # doctest:+ELLIPSIS
+    WorkerEmulator working ...
+    >>> worker(task)
+    >>> task.result
+    0
+
     """
 
     def __init__(self,
