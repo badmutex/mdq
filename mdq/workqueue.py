@@ -252,6 +252,12 @@ class WorkerEmulator(object):
     """
     Emulate a work_queue_worker environment, allowing Tasks to be run directly.
     Mainly indended for debugging purposes
+
+    E.g.
+    >>> t = Task('echo hello world')
+    >>> worker = WorkerEmulator()
+    >>> worker(t)
+    >>> print t.output
     """
 
     def __init__(self):
