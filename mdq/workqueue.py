@@ -3,6 +3,7 @@ import work_queue as ccl
 
 import mdprep.util
 
+import base64
 import copy
 import os
 import pwd
@@ -115,6 +116,27 @@ class Buffer(object):
     def add_to_task(self, task):
         """Add this buffer to a `work_queue.Task`"""
         task.specify_buffer(self._buffer, self._remote, cache=self._cache)
+
+    def add_yaml(self, builder):
+        si = builder
+        si.writeln('buffer:')
+        si.indent()
+        si.writeln('data: !!binary |')
+        si.indent()
+
+        # .data
+        data = base64.encodestring(self._data).split('\n')
+        fill = '\n' + (si.indentlvl * ' ')
+        binary = fill.join(data)
+        si.writeln(binary)
+        si.dedent()
+
+        # .remote
+        si.writeln('remote: %s' % self._remote)
+
+        # .cache
+        si.writeln('cache: %s' % self._cache)
+
 
 class Schedule:
     """An `enum` of scheduling algorithms"""
