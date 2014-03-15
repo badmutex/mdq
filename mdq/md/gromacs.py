@@ -161,6 +161,7 @@ class Task(stream.Unique):
             self._keep_XXX(suffix)
 
     def add_binary(self, path):
+        """Add a binary file to cache"""
         self._binaries.append(path)
 
     def check_binaries(self):
@@ -179,10 +180,12 @@ class Task(stream.Unique):
 
     @property
     def input_files(self):
+        """Input files for the simulation script"""
         return dict(x=self._x, v=self._v, t=self._t, tpr=self._tpr)
 
     @property
     def output_files(self):
+        """Files needed to start the next generation"""
         return dict(x = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['x']),
                     v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v']),
                     t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t']),
@@ -210,6 +213,8 @@ class Task(stream.Unique):
         return os.path.join(self.outputdir, os.path.basename(name))
 
     def to_task(self):
+        """Translate the gromacs Task into a WorkQueue Task"""
+
         mdprep.util.ensure_dir(self.outputdir)
 
         cmd = 'bash %(script)s > %(log)s' % dict(script = SCRIPT_NAME, log = LOGFILE)
