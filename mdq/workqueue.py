@@ -94,6 +94,21 @@ class Buffer(object):
         self._remote = remote
         self._cache = cache
 
+    @property
+    def data(self):
+        """The data to materialize on the worker"""
+        return self._data
+
+    @property
+    def remote(self):
+        """The file name on the worker containing this data"""
+        return self._remote
+
+    @property
+    def cached(self):
+        """Cache this data on the worker?"""
+        return self._cache
+
     def add_to_task(self, task):
         """Add this buffer to a `work_queue.Task`"""
         task.specify_buffer(self._buffer, self._remote, cache=self._cache)
