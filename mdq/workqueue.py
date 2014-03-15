@@ -233,7 +233,7 @@ class Task(object):
         si.writeln('task:')
         si.indent()
         si.writeln('command: %s' % self.command)
-        # import pdb;pdb.set_trace()
+
         if self._files:
             si.writeln('files:')
             si.indent()
