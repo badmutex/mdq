@@ -1,7 +1,7 @@
 # from . import _wq
 import work_queue as ccl
 
-from mdprep.util import StringIO
+import mdprep.util
 
 import copy
 import os
@@ -41,7 +41,7 @@ class File(object):
                  filetype = self._filetype)
 
     def to_yaml(self):
-        si = StringIO()
+        si = mdprep.util.StringIO()
         self.add_yaml(si)
         s = si.getvalue()
         si.close()
@@ -170,7 +170,7 @@ class Task(object):
         """
         Represent this Task as a yaml string
         """
-        si = StringIO()
+        si = mdprep.util.StringIO()
         si.writeln('task:')
         si.indent()
         si.writeln('command: %s' % self.command)
