@@ -131,6 +131,8 @@ class Task(object):
         self._algorithm = Schedule.FCFS
         self._buffer = None
         self._tag = None
+        self._output = ''
+        self._result = -1
 
     ################################################################################ WQ API wrapper
 
@@ -163,6 +165,14 @@ class Task(object):
     def command(self):
         """The command to execute"""
         return self._command
+
+    @property
+    def output(self):
+        return self._output
+
+    @property
+    def result(self):
+        return self._result
 
     def _filter_files_by(self, filetype):
         return filter(lambda f: f.type == filetype, self._files)
