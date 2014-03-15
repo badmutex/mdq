@@ -291,7 +291,7 @@ class WorkerEmulator(object):
 
     def __init__(self):
         self._workarea = tempfile.mkdtemp()
-        print 'WorkerEmulartor working in:', self._workarea
+        print self.__class__.__name__,'working in:', self._workarea
 
     def _copy_path(self, src, dst):
         if   os.path.isfile(src): shutil.copy    (src, dst)
