@@ -37,6 +37,6 @@ if __name__ == '__main__':
         q.specify_log(fd.name)
 
     fount     = MockFount()
-    submit    = GenerationalWorkQueueStream(q, fount, timeout=1, generations=5)
+    submit    = GenerationalWorkQueueStream(q, fount, timeout=1, generations=2)
     sink      = MockSink(submit)
     sink()
