@@ -12,7 +12,7 @@ class MockFount(Fount): # :: Stream gmx.Task
                        v='tests/data/mdq/0/v.gps',
                        t='tests/data/mdq/0/t.gps',
                        tpr='tests/data/topol.tpr',
-                       cpus=1,
+                       cpus=0,
                        )
         sim.keep_trajfiles()
         for name in gmx.EXECUTABLES: sim.add_binary(mdq.util.find_in_path(name))
@@ -33,6 +33,7 @@ class MockGenerations(WorkQueueStream):
             self.submit(task)
             yield None
         else:
+            del self._gens[task.uuid]
             print 'Stopping generation', task.uuid, self._gens[task.uuid]
             yield task
 
@@ -55,6 +56,6 @@ if __name__ == '__main__':
         q.specify_log(fd.name)
 
     fount     = MockFount()
-    submit    = MockGenerations(q, fount, generations=2)
+    submit    = MockGenerations(q, fount, generations=1)
     sink      = MockSink(submit)
     sink()
