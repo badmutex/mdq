@@ -1,29 +1,36 @@
-from .. import workqueue
+from .  import extendable
+from .. import command
+from .. import stream
+from .. import workqueue as wq
+
 import mdprep
-import collections
-import copy
+
 import os
 import random
-import subprocess
 import textwrap
-import tempfile
-import uuid
 
-BINARY_NAMES        = ['guamps_get',
-                       'guamps_set',
-                       'mdrun']
 
-TRAJ_FILES          = ['traj.trr',
-                       'traj.xtc',
-                       'ener.edr',
-                       'md.log']
+EXECUTABLES = [
+      'guamps_get'
+    , 'guamps_set'
+    , 'mdrun'
+]
+
+
+TRAJ_FILES          = dict(trr='traj.trr',
+                           xtc='traj.xtc',
+                           edr='ener.edr',
+                           log='md.log'  )
 
 SELECTIONS          = dict(positions='x', velocities='v',time='t')
 FILE_NAMES          = dict(x = 'x.gps'  , v = 'v.gps'  , t = 't.gps')
-SCRIPT_INPUT_NAMES  = dict(x = 'x_i.gps', v = 'v_i.gps', t = 't_i.gps')
+SCRIPT_INPUT_NAMES  = dict(x = 'x_i.gps', v = 'v_i.gps', t = 't_i.gps', tpr='topol.tpr', cpus='cpus.gps')
 SCRIPT_OUTPUT_NAMES = dict(x = 'x_o.gps', v = 'v_o.gps', t = 't_o.gps')
 
-SCRIPT = textwrap.dedent("""\
+SCRIPT_NAME = 'md.sh' # name of the script on the worker
+LOGFILE = 'task.log'  # log of the task run
+
+SCRIPT_CONTENTS = textwrap.dedent("""\
 #!/usr/bin/env bash
 # exit if any command fails
 set -o errexit 
@@ -34,6 +41,8 @@ export PATH=$PWD:$PATH
 x_i=%(x_i)s
 v_i=%(v_i)s
 t_i=%(t_i)s
+tpr=%(tpr)s
+cpus=%(cpus)s
 
 # output files
 x_o=%(x_o)s
@@ -44,12 +53,12 @@ t_o=%(t_o)s
 export GMX_MAXBACKUP=-1
 
 # continue from previous positions, velocities, and time
-guamps_set -f topol.tpr -s positions  -i $x_i
-guamps_set -f topol.tpr -s velocities -i $v_i
-guamps_set -f topol.tpr -s time       -i $t_i
+guamps_set -f $tpr -s positions  -i $x_i
+guamps_set -f $tpr -s velocities -i $v_i
+guamps_set -f $tpr -s time       -i $t_i
 
 # run with given number of processors
-mdrun -nt $(cat processors.gps)
+mdrun -nt $(cat $cpus) -s $tpr
 
 # retrieve the positions, velocities, and time
 guamps_get -f traj.trr -s positions  -o $x_o
@@ -60,6 +69,8 @@ guamps_get -f traj.trr -s time       -o $t_o
     x_i = SCRIPT_INPUT_NAMES ['x'],
     v_i = SCRIPT_INPUT_NAMES ['v'],
     t_i = SCRIPT_INPUT_NAMES ['t'],
+    tpr = SCRIPT_INPUT_NAMES ['tpr'],
+    cpus= SCRIPT_INPUT_NAMES ['cpus'],
     x_o = SCRIPT_OUTPUT_NAMES['x'],
     v_o = SCRIPT_OUTPUT_NAMES['v'],
     t_o = SCRIPT_OUTPUT_NAMES['t'],
@@ -67,261 +78,169 @@ guamps_get -f traj.trr -s time       -o $t_o
 )
 
 
-executables = [
-      'guamps_get'
-    , 'guamps_set'
-    , 'mdrun'
-]
 
-LOGFILE = 'task.log'
 
-def get_nsteps(path):
-    suffix = os.path.splitext(path)[-1]
-    suffix = suffix.lower()
-    if suffix == '.tpr':
-        cmd = 'guamps_get -f %(tpr)s -s nsteps' % dict(tpr=path)
-    elif suffix == '.mdp':
-        cmd = "egrep '^ *nsteps *=' %(mdp)s | awk '{print $3}'" % dict(mdp=path)
-    else:
-        raise Exception, '%s has unknown filetype %s' % (path, suffix)
+pdb2gmx    = mdprep.gmx.pdb2gmx
+editconf   = mdprep.gmx.editconf
+grompp     = mdprep.gmx.grompp
+genion     = mdprep.gmx.genion
+genbox     = mdprep.gmx.genbox
+mdrun      = mdprep.gmx.mdrun
+guamps_get = mdprep.process.OptCommand('guamps_get')
+guamps_set = mdprep.process.OptCommand('guamps_set')
 
-    out = subprocess.check_output(cmd, shell=True).strip()
-    nsteps = int(out)
-    return nsteps
 
-def which(exes, search=None):
+class Task(stream.Unique, wq.Taskable, extendable.Extendable):
     """
-    Attemps to locate the given executable names in the provides search paths
+    This represents everything needed to run a simulation.
+
+    The following example runs three generations of a simulations.
+    In order to run, the binaries (mdrun, guamps_{g,s}et) need to be in the PATH
+
+    >>> import mdq.util
+    >>> import mdq.workqueue as wq
+    >>> import mdq.md.gromacs as gmx
+    >>> sim = gmx.Task(x='tests/data/mdq/0/x.gps',
+    ...                v='tests/data/mdq/0/v.gps',
+    ...                t='tests/data/mdq/0/t.gps',
+    ...                tpr='tests/data/topol.tpr',
+    ...                )
+    >>> sim.keep_trajfiles()
+    >>> for name in gmx.EXECUTABLES:
+    ...     sim.add_binary(mdq.util.find_in_path(name))
+    >>> worker = wq.WorkerEmulator() # doctest:+ELLIPSIS
+    WorkerEmulator working ...
+    >>> for gen in xrange(3): # 3 generations
+    ...   task = sim.to_task()
+    ...   worker(task)
+    ...   assert task.result == 0
+    ...   sim.extend()
+
     """
 
-    search = search if search is not None else os.environ['PATH'].split(os.pathsep)
-    found  = collections.defaultdict(lambda: False)
-    for prefix in search:
-        for name in exes:
-            path = os.path.join(prefix, name)
-            if os.path.exists(path) and os.access(path, os.X_OK):
-                found[name] = path
-                continue
+    def __init__(self,
+                 x='x.gps', v='v.gps', t='t.gps', tpr='topol.tpr',
+                 outputdir=None, cpus=0
+                 ):
 
-    assert set(found.keys()).difference(set(exes)) == set()
-    if not all(found.values()): raise Exception
-    return dict(found)
+        super(Task, self).__init__()
 
-guamps_get = mdprep.process.optcmd('guamps_get')
-guamps_set = mdprep.process.optcmd('guamps_set')
+        self._x         = x # positions
+        self._v         = v # velocity
+        self._t         = t # start time
+        self._tpr       = tpr
+        self._outputdir = outputdir if outputdir is not None else os.path.splitext(tpr)[0] + '.mdq'
+        self._cpus      = cpus
 
-class GMX(object):
+        self._generation = 0
+        self._binaries   = list()
+        self._trajfiles  = list()
 
-    def __init__(self, workarea='.', out='mdq',
-                 binaries=None,
-                 transfer_traj=True,
-                 time=None, outfreq=1000,
-                 cpus=None,
-                 gro='conf.gro',
-                 top='topol.top',
-                 itp='posre.itp',
-                 mdp='grompp.mdp',
-                 tpr='topol.tpr'):
+    def _keep_XXX(self, suffix):
+        """Mark a simulation output file to be transferred back from the worker"""
+        self._trajfiles.append(TRAJ_FILES[suffix])
 
-        assert binaries is not None
-        # input parameters
-        self._workarea     = workarea
-        self._out          = out
-        self._transfer_traj=transfer_traj
-        self._binaries     = binaries
-        self._time         = time if time is not None else -1
-        self._outfreq      = outfreq
-        self._nprocs       = cpus if cpus is not None else 0
-        self._gro          = gro
-        self._top          = top
-        self._itp          = itp
-        self._mdp          = mdp
-        self._tpr          = tpr
+    def keep_trr(self):
+        """Keep the trajectory .trr file"""
+        self._keep_XXX('trr')
 
-        # properties / attributes
-        self._uuid         = uuid.uuid1()
-        self._gen          = 0 # current generation
-        self._ok           = False # current generation is successfull
-        self._inputfiles   = list()
-        self._outputfiles  = list()
+    def keep_xtc(self):
+        """Keep the trajecotry .xtc file"""
+        self._keep_XXX('xtc')
 
-    def _set_seed(self, seed):
-        mdp = mdprep.load(self._mdp)
-        mdp.seed(seed)
-        mdp.save(self._mdp)
+    def keep_edr(self):
+        """Keep the energy .edr file"""
+        self._keep_XXX('edr')
 
-    def _mk_tpr(self):
-        with mdprep.util.StackDir(self._workarea), mdprep.gmx.NoAutobackup():
-            mdprep.grompp(f=self._mdp,
-                          c=self._gro,
-                          p=self._top,
-                          o=self._tpr
-                          )
+    def keep_log(self):
+        """Keep the simulation .log file"""
+        self._keep_XXX('log')
 
-    def _set_tpr_scalar_params(self, selection, value):
-        with mdprep.util.StackDir(self._workarea), tempfile.NamedTemporaryFile() as tmp:
-            tmp.write('%s' % value)
-            tmp.flush()
-            guamps_set(f=self._tpr,
-                       s=selection,
-                       i=tmp.name,
-                       O=True
-                       )
+    def keep_trajfiles(self):
+        """Transfer back all the trajectory output files"""
+        for suffix in TRAJ_FILES.keys():
+            self._keep_XXX(suffix)
 
-    def _get_tpr_scalar(self, selection, typed):
-        with mdprep.util.StackDir(self._workarea), tempfile.NamedTemporaryFile() as tmp:
-            guamps_get(f=self._tpr,
-                       s=selection,
-                       o=tmp.name,
-                       )
-            tmp.seek(0)
-            return typed(tmp.readline())
+    def add_binary(self, path):
+        """Add a binary file to cache"""
+        self._binaries.append(path)
 
-    def _set_tpr(self):
-        dt = self._get_tpr_scalar('deltat', float)
-        if self._time > 0:
-            nsteps = int(self._time / dt)
-        else:
-            nsteps = -1
-        self._set_tpr_scalar_params('nsteps', nsteps)
-        for sel in 'nstxout nstvout nstfout nstlog nstxtcout'.split():
-            freq = int(self._outfreq / dt)
-            self._set_tpr_scalar_params(sel, freq)
-
-    def _reseed(self):
-        self._set_tpr_scalar_params('ld_seed', random.randint(1, 10**10))
-
-    def _write_task_files(self):
-        tpr = os.path.abspath(os.path.join(self._workarea, self._tpr))
-        with mdprep.util.StackDir(self._current_simdir):
-            for selection, name in SELECTIONS.iteritems():
-                guamps_get(f=tpr,
-                           s=selection,
-                           o=FILE_NAMES[name]
-                           )
-
-    def _init_prepare(self):
-        """
-        Prepare for the first simulation
-        """
-        self._mk_tpr()
-        self._set_tpr()
-        self._reseed()
-        self._write_task_files()
-
-    def _prepare(self, task):
-        if self._gen == 0:
-            self._init_prepare()
-
-        mdprep.util.ensure_dir(self._next_simdir)
-
-        t = workqueue.Task('bash md.sh >%s 2>&1' % LOGFILE)
-        t.specify_buffer(SCRIPT, 'md.sh', cache=True)
-        t.specify_buffer(str(self._nprocs), 'processors.gps', cache=True)
-
-        # cache tpr
-        t.specify_input_file(os.path.join(self._workarea, self._tpr), cache=True)
-
-        # don't cache input files
-        self._inputfiles = list()
-        for key, name in FILE_NAMES.iteritems():
-            local  = os.path.join(self._current_simdir, name)
-            remote = SCRIPT_INPUT_NAMES[key]
-            self._inputfiles.append(local)
-            t.specify_input_file(local, remote, cache=False)
-            print local, '->', remote
-
-        # don't cache output files
-        self._outputfiles = list()
-        traj = TRAJ_FILES if self._transfer_traj else []
-        for key, name in FILE_NAMES.items():
-            local  = os.path.join(self._next_simdir, name)
-            remote = SCRIPT_OUTPUT_NAMES[key]
-            self._outputfiles.append(local)
-            t.specify_output_file(local, remote, cache=False)
-            print local, '<-', remote
-
-        for n in [LOGFILE] + traj:
-            local  = os.path.join(self._current_simdir, n)
-            remote = n
-            self._outputfiles.append(local)
-            t.specify_output_file(local, remote, cache=False)
-            print local, '<-', remote
-
-        # cache the binaries
-        for n in BINARY_NAMES:
-            local  = os.path.join(self._binaries, '$OS', '$ARCH', n)
-            remote = n
-            t.specify_input_file(local, remote, cache=True)
-
-        # tag with uuid
-        t.specify_tag(str(self._uuid))
-
-        return t
-
-    def _gendir(self, gen):
-        """Get the simulation directory of the specified `gen`"""
-        assert gen >= 0
-        return os.path.join(self._workarea, self._out, str(gen))
-
-    def incr(self):
-        """Increment the generation count"""
-        self._gen += 1
+    def check_binaries(self):
+        """Checks that the required executables (EXECUTABLES) have been added"""
+        found    = 0
+        notfound = list()
+        for path in self._binaries:
+            base = os.path.basename(path)
+            for name in EXECUTABLES:
+                if name == base:
+                    found += 1
+                    continue
+                notfound.append(name)
+        if not found == len(EXECUTABLES):
+            raise ValueError, 'Binaries for %s were not added' % ', '.join(notfound)
 
     @property
-    def uuid(self):
-        """
-        The UUID of this generational task
-        """
-        return self._uuid
+    def input_files(self):
+        """Input files for the simulation script"""
+        return dict(x=self._x, v=self._v, t=self._t, tpr=self._tpr)
+
+    @property
+    def output_files(self):
+        """Files needed to start the next generation"""
+        return dict(x = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['x']),
+                    v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v']),
+                    t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t']),
+                    )
+
+    def extend(self):
+        """Set the file names to run the next generation"""
+        self._x = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['x'])
+        self._v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v'])
+        self._t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t'])
+        self._generation += 1
 
     @property
     def generation(self):
         """The current generation"""
-        return self._gen
+        return self._generation
 
     @property
-    def gen(self):
-        return self.generation
+    def outputdir(self):
+        """The output directory for the current generation"""
+        return os.path.join(self._outputdir, str(self._generation))
 
-    @property
-    def _current_simdir(self):
-        """
-        Get the simulation directory of the current `gen`
-        """
-        return self._gendir(self._gen)
+    def output_path(self, name):
+        """Return the local filename"""
+        return os.path.join(self.outputdir, os.path.basename(name))
 
-    @property
-    def _next_simdir(self):
-        """
-        Get the simulation directory of the next `gen`
-        """
-        g = self._gen + 1
-        return self._gendir(g)
+    ###################################################################### Implement Taskable interface
+    def to_task(self):
 
-    @property
-    def input_files(self):
-        """
-        The current input files
-        """
-        return copy.copy(self._inputfiles)
+        mdprep.util.ensure_dir(self.outputdir)
 
-    @property
-    def output_files(self):
-        """
-        The current output files
-        """
-        return copy.copy(self._outputfiles)
+        cmd = 'bash %(script)s > %(log)s' % dict(script = SCRIPT_NAME, log = LOGFILE)
+        task = wq.Task(cmd)
 
-    def __call__(self, task=None):
-        """
-        task: the WQ Task of the previous generation
-        """
-        return self._prepare(task)
+        # input files
+        task.specify_buffer(SCRIPT_CONTENTS, SCRIPT_NAME              , cache=True)
+        task.specify_buffer(str(self._cpus), SCRIPT_INPUT_NAMES['cpus'],cache=True)
+        task.specify_input_file(self._x    , SCRIPT_INPUT_NAMES['x']  , cache=False, name='x_i')
+        task.specify_input_file(self._v    , SCRIPT_INPUT_NAMES['v']  , cache=False, name='v_i')
+        task.specify_input_file(self._t    , SCRIPT_INPUT_NAMES['t']  , cache=False, name='t_i')
+        task.specify_input_file(self._tpr  , SCRIPT_INPUT_NAMES['tpr'], cache=True , name='tpr')
 
+        # output files
+        task.specify_output_file(self.output_files['x'], SCRIPT_OUTPUT_NAMES['x']  , cache=False, name='x_o')
+        task.specify_output_file(self.output_files['v'], SCRIPT_OUTPUT_NAMES['v']  , cache=False, name='v_o')
+        task.specify_output_file(self.output_files['t'], SCRIPT_OUTPUT_NAMES['t']  , cache=False, name='t_o')
 
+        self.check_binaries()
+        for path in self._binaries:
+            task.specify_input_file(path, cache=True)
 
+        for name in self._trajfiles:
+            task.specify_output_file(self.output_path(name), name, cache=False)
 
-if __name__ == '__main__':
-    g = GMX('tests/data', generations=2)
-    print g.tag
+        return task
+
+    def update_task(self, task): pass
