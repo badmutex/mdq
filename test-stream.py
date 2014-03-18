@@ -1,17 +1,24 @@
 from mdq.stream    import Fount, Stream, WorkQueueStream, Sink
 from mdq.workqueue import Task, MkWorkQueue
+import mdq.md.gromacs as gmx
+import mdq.util
+
 import collections
 
+class MockFount(Fount): # :: Stream gmx.Task
 
-class MockFount(Fount):
     def generate(self):
-        import random
-        for i in xrange(10):
-            sleep = 1
-            sleep = random.randint(1,30)
-            yield Task('echo %s;sleep %s' % (i, sleep))
+        sim = gmx.Task(x='tests/data/mdq/0/x.gps',
+                       v='tests/data/mdq/0/v.gps',
+                       t='tests/data/mdq/0/t.gps',
+                       tpr='tests/data/topol.tpr',
+                       cpus=1,
+                       )
+        sim.keep_trajfiles()
+        for name in gmx.EXECUTABLES: sim.add_binary(mdq.util.find_in_path(name))
+        yield sim
 
-class MockGenerations(WorkQueueStream):
+class MockGenerations(WorkQueueStream): # Stream gmx.Task -> Stream pwq.Task
     def __init__(self, *args, **kws):
         gens = kws.pop('generations', 1)
         super(MockGenerations, self).__init__(*args, **kws)
@@ -22,6 +29,7 @@ class MockGenerations(WorkQueueStream):
         self._gens[task.tag] += 1
         if self._gens[task.tag] < self._generations:
             print 'Continuing', task.tag, self._gens[task.tag]
+            task.extend()
             self.submit(task)
             yield None
         else:
