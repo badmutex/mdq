@@ -1,9 +1,8 @@
-from mdq.stream    import Fount, Stream, WorkQueueStream, Sink
+from mdq.stream    import Fount, GenerationalWorkQueueStream, Sink
 from mdq.workqueue import MkWorkQueue, WorkQueue
 import mdq.md.gromacs as gmx
 import mdq.util
 
-import collections
 
 class MockFount(Fount): # :: Stream gmx.Task
 
@@ -17,25 +16,6 @@ class MockFount(Fount): # :: Stream gmx.Task
         sim.keep_trajfiles()
         for name in gmx.EXECUTABLES: sim.add_binary(mdq.util.find_in_path(name))
         yield sim
-
-class MockGenerations(WorkQueueStream):
-    def __init__(self, *args, **kws):
-        gens = kws.pop('generations', 1)
-        super(MockGenerations, self).__init__(*args, **kws)
-        self._generations = gens
-        self._gens = collections.defaultdict(lambda:0) # uuid -> <int>
-
-    def process(self, task):
-        self._gens[task.uuid] += 1
-        if self._gens[task.uuid] < self._generations:
-            print 'Continuing', task.uuid, self._gens[task.uuid]
-            task.extend()
-            self.submit(task)
-            yield None
-        else:
-            del self._gens[task.uuid]
-            print 'Stopping generation', task.uuid, self._gens[task.uuid]
-            yield task
 
 class MockSink(Sink):
     def consume(self, task):
@@ -57,6 +37,6 @@ if __name__ == '__main__':
         q.specify_log(fd.name)
 
     fount     = MockFount()
-    submit    = MockGenerations(q, fount, timeout=1, generations=5)
+    submit    = GenerationalWorkQueueStream(q, fount, timeout=1, generations=5)
     sink      = MockSink(submit)
     sink()

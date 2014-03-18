@@ -1,5 +1,6 @@
 import work_queue as ccl
 
+import collections
 import uuid
 
 
@@ -89,6 +90,29 @@ class WorkQueueStream(Stream):
                 for result in self.process(r):
                     if result is None: continue
                     yield result
+
+class GenerationalWorkQueueStream(WorkQueueStream):
+    """
+    GenerationalWorkQueueStream :: Extendable t, Taskable t => Stream t -> Stream t
+
+    Run tasks for a given number of generations using the `.extend` method
+    """
+    def __init__(self, *args, **kws):
+        gens = kws.pop('generations', 1)
+        super(GenerationalWorkQueueStream, self).__init__(*args, **kws)
+        self._generations = gens
+        self._count       = collections.defaultdict(lambda:0) # uuid -> int
+
+    def process(self, task):
+        self._count[task.uuid] += 1
+        gen = self._count[task.uuid]
+        if gen < self._generations:
+            task.extend()
+            self.submit(task)
+            yield None
+        else:
+            del self._count[task.uuid]
+            yield task
 
 class Sink(Unique, Processor):
     """
