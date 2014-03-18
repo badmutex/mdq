@@ -12,7 +12,7 @@ class MockFount(Fount): # :: Stream gmx.Task
                        v='tests/data/mdq/0/v.gps',
                        t='tests/data/mdq/0/t.gps',
                        tpr='tests/data/topol.tpr',
-                       cpus=0,
+                       cpus=1,
                        )
         sim.keep_trajfiles()
         for name in gmx.EXECUTABLES: sim.add_binary(mdq.util.find_in_path(name))
@@ -50,13 +50,13 @@ if __name__ == '__main__':
         .replicate(8)
     )
 
-    q = WorkQueue(mkq)
+    q = mkq()
 
     with open('wq.log', 'w') as fd:
         fd.write('#')
         q.specify_log(fd.name)
 
     fount     = MockFount()
-    submit    = MockGenerations(q, fount, generations=1)
+    submit    = MockGenerations(q, fount, timeout=1, generations=5)
     sink      = MockSink(submit)
     sink()
