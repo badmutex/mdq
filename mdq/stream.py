@@ -8,7 +8,7 @@ class Unique(object):
         self._uuid = uuid.uuid1()
 
     @property
-    def id(self): return str(self._uuid)
+    def uuid(self): return str(self._uuid)
 
 class Generator(object):
     def generate(self):
@@ -20,12 +20,17 @@ class Processor(object):
 
 
 class Fount(Unique, Generator):
+    """
+    Fount :: Stream a
+    """
     def __iter__(self):
         for task in self.generate():
-            task.specify_tag('%s' % uuid.uuid1())
             yield task
 
 class Stream(Unique, Processor):
+    """
+    Stream :: Stream a -> Stream b
+    """
     def __init__(self, source):
         super(Stream, self).__init__()
         self._fountain = source
@@ -38,32 +43,43 @@ class Stream(Unique, Processor):
 
 
 class WorkQueueStream(Stream):
+    """
+    WorkQueueStream :: Task t => Stream t -> Stream t
+    """
     def __init__(self, q, source, timeout=5):
         super(WorkQueueStream, self).__init__(source)
         self._q = q
         self._timeout = timeout
-        self._count = 0
+        self._table = dict() # Task t => uuid -> t
 
     @property
     def wq(self): return self._q
 
-    def submit(self, task):
+    def __len__(self):
+        """
+        Returns the current number of tasks in the queue
+        """
+        return len(self._table)
+
+    def submit(self, taskable):
+        task = taskable.to_task()
+        self._table[task.uuid] = taskable
         self.wq.submit(task)
-        self._count += 1
 
     def empty(self):
-        return not self._count > 0
+        return len(self._table) <= 0
 
     def wait(self):
         result = self.wq.wait(self._timeout)
         if result:
-            self._count -= 1
-        return result
+            taskable = self._table[result.uuid]
+            taskable.update_task(result)
+            del self._table[result.uuid]
+            return taskable
 
     def __iter__(self):
 
         for t in self._fountain:
-            print 'submitting', t.tag
             self.submit(t)
 
         while not self.empty():
@@ -75,9 +91,25 @@ class WorkQueueStream(Stream):
                     yield result
 
 class Sink(Unique, Processor):
+    """
+    Sink :: Stream a -> b
+    """
     def __init__(self, source):
         super(Sink, self).__init__()
         self._source = source
+
+    @property
+    def result(self):
+        """
+        The accumulated result
+        """
+        return None
+
+    def consume(self, obj):
+        """
+        Consume each result from upstream.
+        """
+        pass
 
     def __iter__(self):
         for t in self._source:
@@ -88,5 +120,7 @@ class Sink(Unique, Processor):
         """
         Pull all the results
         """
-        for _ in self:
-            pass
+        for obj in self:
+            self.consume(obj)
+
+        return self.result

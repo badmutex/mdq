@@ -18,7 +18,7 @@ class MockFount(Fount): # :: Stream gmx.Task
         for name in gmx.EXECUTABLES: sim.add_binary(mdq.util.find_in_path(name))
         yield sim
 
-class MockGenerations(WorkQueueStream): # Stream gmx.Task -> Stream pwq.Task
+class MockGenerations(WorkQueueStream):
     def __init__(self, *args, **kws):
         gens = kws.pop('generations', 1)
         super(MockGenerations, self).__init__(*args, **kws)
@@ -26,15 +26,19 @@ class MockGenerations(WorkQueueStream): # Stream gmx.Task -> Stream pwq.Task
         self._gens = collections.defaultdict(lambda:0) # uuid -> <int>
 
     def process(self, task):
-        self._gens[task.tag] += 1
-        if self._gens[task.tag] < self._generations:
-            print 'Continuing', task.tag, self._gens[task.tag]
+        self._gens[task.uuid] += 1
+        if self._gens[task.uuid] < self._generations:
+            print 'Continuing', task.uuid, self._gens[task.uuid]
             task.extend()
             self.submit(task)
             yield None
         else:
-            print 'Stopping generation', task.tag, self._gens[task.tag]
+            print 'Stopping generation', task.uuid, self._gens[task.uuid]
             yield task
+
+class MockSink(Sink):
+    def consume(self, task):
+        print 'Complete', task.uuid
 
 if __name__ == '__main__':
 
@@ -52,7 +56,5 @@ if __name__ == '__main__':
 
     fount     = MockFount()
     submit    = MockGenerations(q, fount, generations=2)
-    sink      = Sink(submit)
-
-    for r in sink:
-        print 'Complete', r.tag
+    sink      = MockSink(submit)
+    sink()

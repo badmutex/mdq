@@ -89,7 +89,7 @@ guamps_get = mdprep.process.OptCommand('guamps_get')
 guamps_set = mdprep.process.OptCommand('guamps_set')
 
 
-class Task(stream.Unique):
+class Task(stream.Unique, wq.Taskable):
     """
     This represents everything needed to run a simulation.
 
@@ -212,8 +212,8 @@ class Task(stream.Unique):
         """Return the local filename"""
         return os.path.join(self.outputdir, os.path.basename(name))
 
+    ###################################################################### Implement Taskable interface
     def to_task(self):
-        """Translate the gromacs Task into a WorkQueue Task"""
 
         mdprep.util.ensure_dir(self.outputdir)
 
@@ -241,3 +241,5 @@ class Task(stream.Unique):
             task.specify_output_file(self.output_path(name), name, cache=False)
 
         return task
+
+    def update_task(self, task): pass
