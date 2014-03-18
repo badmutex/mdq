@@ -64,7 +64,7 @@ class WorkQueueStream(Stream):
     def submit(self, taskable):
         task = taskable.to_task()
         self._table[task.uuid] = taskable
-        self.wq.submit(task)
+        return self.wq.submit(task)
 
     def empty(self):
         return len(self._table) <= 0
