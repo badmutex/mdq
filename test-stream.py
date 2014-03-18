@@ -1,6 +1,6 @@
 from mdq.stream    import Fount, GenerationalWorkQueueStream, Sink
 from mdq.workqueue import MkWorkQueue, WorkQueue
-import mdq.md.gromacs as gmx
+import mdq.md.gmx as gmx
 import mdq.util
 
 
