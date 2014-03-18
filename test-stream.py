@@ -43,13 +43,14 @@ class MockSink(Sink):
 
 if __name__ == '__main__':
 
-    q = (
+    mkq = (
         MkWorkQueue()
         .port(9123)
-        # .debug_all()
+        .debug_all()
         .replicate(8)
-        ()
     )
+
+    q = WorkQueue(mkq)
 
     with open('wq.log', 'w') as fd:
         fd.write('#')
