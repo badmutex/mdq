@@ -1,5 +1,5 @@
 from mdq.stream    import Fount, Stream, WorkQueueStream, Sink
-from mdq.workqueue import Task, MkWorkQueue
+from mdq.workqueue import MkWorkQueue, WorkQueue
 import mdq.md.gromacs as gmx
 import mdq.util
 
