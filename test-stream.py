@@ -46,8 +46,8 @@ if __name__ == '__main__':
     mkq = (
         MkWorkQueue()
         .port(9123)
-        .debug_all()
         .replicate(8)
+        # .debug_all()
     )
 
     q = mkq()
