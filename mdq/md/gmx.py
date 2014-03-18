@@ -1,3 +1,4 @@
+from .  import extendable
 from .. import command
 from .. import stream
 from .. import workqueue as wq
@@ -89,7 +90,7 @@ guamps_get = mdprep.process.OptCommand('guamps_get')
 guamps_set = mdprep.process.OptCommand('guamps_set')
 
 
-class Task(stream.Unique, wq.Taskable):
+class Task(stream.Unique, wq.Taskable, extendable.Extendable):
     """
     This represents everything needed to run a simulation.
 
