@@ -16,7 +16,7 @@ class MockFount(Fount): # :: Stream gmx.Task
                           )
 
         for i in xrange(5):
-            yield sim.prepare('tests/data/topol.tpr', outputdir='tests/sim/test%s' % i, seed=i)
+            yield sim.task('tests/data/topol.tpr', outputdir='tests/sim/test%s' % i, seed=i)
 
 class MockSink(Sink):
     def consume(self, task):
