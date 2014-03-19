@@ -96,7 +96,7 @@ class Prepare(object):
     def __init__(self,
                  cpus=0, mdrun=None, guamps_get=None, guamps_set=None,
                  keep_trajfiles=True):
-        self._cpus = 0
+        self._cpus = cpus
         self._mdrun = mdrun
         self._guamps_get = guamps_get
         self._guamps_set = guamps_set
