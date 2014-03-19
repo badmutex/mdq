@@ -7,6 +7,8 @@ import mdprep
 
 import os
 import random
+import tempfile
+import shutil
 import textwrap
 
 
@@ -89,6 +91,50 @@ mdrun      = mdprep.gmx.mdrun
 guamps_get = mdprep.process.OptCommand('guamps_get')
 guamps_set = mdprep.process.OptCommand('guamps_set')
 
+
+class Prepare(object):
+    def __init__(self,
+                 cpus=0, mdrun=None, guamps_get=None, guamps_set=None,
+                 keep_trajfiles=True):
+        self._cpus = 0
+        self._mdrun = mdrun
+        self._guamps_get = guamps_get
+        self._guamps_set = guamps_set
+        self._keep_trajfiles = keep_trajfiles
+
+    def prepare(self, tpr, outputdir=None, seed=None):
+        outdir = outputdir or tpr + '.mdq'
+        mdprep.util.ensure_dir(outdir)
+
+        tpr2 = os.path.join(outdir, 'topol.tpr')
+        shutil.copy(tpr, tpr2)
+
+        gendir = os.path.join(outdir, '0')
+        mdprep.util.ensure_dir(gendir)
+
+        gps = dict(x = os.path.join(gendir, SCRIPT_INPUT_NAMES['x']),
+                   v = os.path.join(gendir, SCRIPT_INPUT_NAMES['v']),
+                   t = os.path.join(gendir, SCRIPT_INPUT_NAMES['t']))
+
+        for sel, key in SELECTIONS.iteritems():
+            guamps_get(f=tpr2, s=sel, o=gps[key])
+
+        if seed:
+            seedfile = os.path.join(outdir, 'seed.gps')
+            with open(seedfile, 'w') as fd: fd.write('%s\n' % seed)
+            guamps_set(f=tpr2, s='ld_seed', i=seedfile, O=True)
+
+        task = Task(x=gps['x'], v=gps['v'], t=gps['t'], tpr=tpr2,
+                    outputdir=outdir, cpus=self._cpus)
+
+        task.add_binary(self._mdrun)
+        task.add_binary(self._guamps_get)
+        task.add_binary(self._guamps_set)
+
+        if self._keep_trajfiles:
+            task.keep_trajfiles()
+
+        return task
 
 class Task(stream.Unique, wq.Taskable, extendable.Extendable):
     """
