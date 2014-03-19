@@ -102,7 +102,7 @@ class Prepare(object):
         self._guamps_set = guamps_set
         self._keep_trajfiles = keep_trajfiles
 
-    def prepare(self, tpr, outputdir=None, seed=None):
+    def task(self, tpr, outputdir=None, seed=None):
         outdir = outputdir or tpr + '.mdq'
         mdprep.util.ensure_dir(outdir)
 
