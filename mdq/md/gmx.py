@@ -1,4 +1,4 @@
-from .  import extendable
+from .  import api
 from .. import command
 from .. import stream
 from .. import workqueue as wq
@@ -92,7 +92,7 @@ guamps_get = mdprep.process.OptCommand('guamps_get')
 guamps_set = mdprep.process.OptCommand('guamps_set')
 
 
-class Prepare(object):
+class Prepare(api.Preparable):
     def __init__(self,
                  cpus=0, mdrun=None, guamps_get=None, guamps_set=None,
                  keep_trajfiles=True):
@@ -136,7 +136,7 @@ class Prepare(object):
 
         return task
 
-class Task(stream.Unique, wq.Taskable, extendable.Extendable):
+class Task(stream.Unique, api.Taskable, api.Extendable):
     """
     This represents everything needed to run a simulation.
 
