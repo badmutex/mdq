@@ -91,6 +91,11 @@ mdrun      = mdprep.gmx.mdrun
 guamps_get = mdprep.process.OptCommand('guamps_get')
 guamps_set = mdprep.process.OptCommand('guamps_set')
 
+def tpr_set_scalar(tpr, name, value):
+    tmpfile = os.path.join(os.path.dirname(tpr), name +'.gps')
+    with open(tmpfile, 'w') as fd: fd.write('%s\n' % value)
+    guamps_set(f=tpr, s=name, i=tmpfile, O=True)
+    os.unlink(tmpfile)
 
 class Prepare(api.Preparable):
     def __init__(self,
@@ -120,9 +125,7 @@ class Prepare(api.Preparable):
             guamps_get(f=tpr2, s=sel, o=gps[key])
 
         if seed:
-            seedfile = os.path.join(outdir, 'seed.gps')
-            with open(seedfile, 'w') as fd: fd.write('%s\n' % seed)
-            guamps_set(f=tpr2, s='ld_seed', i=seedfile, O=True)
+            tpr_set_scalar(tpr2, 'ld_seed', seed)
 
         task = Task(x=gps['x'], v=gps['v'], t=gps['t'], tpr=tpr2,
                     outputdir=outdir, cpus=self._cpus)
