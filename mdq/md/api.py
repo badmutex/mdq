@@ -24,6 +24,6 @@ class Preparable(object):
 
     def task(self, *args, **kws):
         """
-        Return an object implementing the `Exentable` and `Taskable` interfaces
+        Return an object implementing the `Extendable` and `Taskable` interfaces
         """
         return NotImplemented
