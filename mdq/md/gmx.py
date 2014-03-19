@@ -97,10 +97,21 @@ def tpr_set_scalar(tpr, name, value):
     guamps_set(f=tpr, s=name, i=tmpfile, O=True)
     os.unlink(tmpfile)
 
+def tpr_get_scalar(tpr, name, mktype):
+    tmpfile = os.path.join(os.path.dirname(tpr), name+'.gps')
+    guamps_get(f=tpr, s=name, o=tmpfile)
+    with open(tmpfile) as fd:
+        value = fd.readline()
+        value = mktype(value)
+    os.unlink(tmpfile)
+    return value
+
 class Prepare(api.Preparable):
     def __init__(self,
+                 picoseconds=None,
                  cpus=0, mdrun=None, guamps_get=None, guamps_set=None,
                  keep_trajfiles=True):
+        self._picoseconds = picoseconds
         self._cpus = cpus
         self._mdrun = mdrun
         self._guamps_get = guamps_get
@@ -126,6 +137,11 @@ class Prepare(api.Preparable):
 
         if seed:
             tpr_set_scalar(tpr2, 'ld_seed', seed)
+
+        if self._picoseconds:
+            dt = tpr_get_scalar(tpr2, 'deltat', float)
+            nsteps = int(self._picoseconds / dt)
+            tpr_set_scalar(tpr2, 'nsteps', nsteps)
 
         task = Task(x=gps['x'], v=gps['v'], t=gps['t'], tpr=tpr2,
                     outputdir=outdir, cpus=self._cpus)
