@@ -7,7 +7,6 @@ import mdq.util
 
 
 class MockFount(Fount): # :: Stream gmx.Task
-
     def generate(self):
         sim = gmx.Prepare(cpus       = 1,
                           mdrun      = mdq.util.find_in_path('mdrun'),
