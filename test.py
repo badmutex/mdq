@@ -14,7 +14,9 @@ class MockFount(Fount): # :: Stream gmx.Task
                           guamps_get = mdq.util.find_in_path('guamps_get'),
                           guamps_set = mdq.util.find_in_path('guamps_set'),
                           )
-        yield sim.prepare('tests/data/topol.tpr', outputdir='tests/sim/test0', seed=0)
+
+        for i in xrange(5):
+            yield sim.prepare('tests/data/topol.tpr', outputdir='tests/sim/test%s' % i, seed=i)
 
 class MockSink(Sink):
     def consume(self, task):
