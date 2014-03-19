@@ -9,15 +9,12 @@ import mdq.util
 class MockFount(Fount): # :: Stream gmx.Task
 
     def generate(self):
-        sim = gmx.Task(x='tests/data/mdq/0/x.gps',
-                       v='tests/data/mdq/0/v.gps',
-                       t='tests/data/mdq/0/t.gps',
-                       tpr='tests/data/topol.tpr',
-                       cpus=1,
-                       )
-        sim.keep_trajfiles()
-        for name in gmx.EXECUTABLES: sim.add_binary(mdq.util.find_in_path(name))
-        yield sim
+        sim = gmx.Prepare(cpus       = 1,
+                          mdrun      = mdq.util.find_in_path('mdrun'),
+                          guamps_get = mdq.util.find_in_path('guamps_get'),
+                          guamps_set = mdq.util.find_in_path('guamps_set'),
+                          )
+        yield sim.prepare('tests/data/topol.tpr', outputdir='tests/sim/test0', seed=0)
 
 class MockSink(Sink):
     def consume(self, task):
