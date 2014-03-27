@@ -160,7 +160,7 @@ class Prepare(api.Preparable):
 
         return task
 
-class Task(stream.Unique, api.Taskable, api.Extendable):
+class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
     """
     This represents everything needed to run a simulation.
 
@@ -277,18 +277,18 @@ class Task(stream.Unique, api.Taskable, api.Extendable):
         """Return the local filename"""
         return os.path.join(self.outputdir, os.path.basename(name))
 
-    ###################################################################### Implement the Extendable interface
+    ###################################################################### Implement the Persistable interface
+    @property
+    def digest(self):
+        return self._digest
+
+    ###################################################################### Implement the Extendteable interface
     def extend(self):
         """Set the file names to run the next generation"""
         self._x = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['x'])
         self._v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v'])
         self._t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t'])
         self._generation += 1
-
-    @property
-    def digest(self):
-        return self._digest
-
 
     ###################################################################### Implement Taskable interface
     def to_task(self):

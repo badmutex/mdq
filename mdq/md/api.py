@@ -4,6 +4,15 @@ from .. import workqueue
 
 Taskable = workqueue.Taskable
 
+class Persistable(object):
+    @property
+    def digest(self):
+        """
+        Return the hexdigest of the initial input files.
+        """
+        raise NotImplemented
+
+
 class Extendable(object):
     """
     MD Tasks typicall cannot finish within the timeframe supported by most workers.
@@ -16,14 +25,6 @@ class Extendable(object):
         Update the object internal state so that it represent the next set of work to do.
         """
         raise NotImplemented
-
-    @property
-    def digest(self):
-        """
-        Return the hexdigest of the initial input files
-        """
-        raise NotImplemented
-
 
 class Preparable(object):
     """
