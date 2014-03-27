@@ -257,13 +257,6 @@ class Task(stream.Unique, api.Taskable, api.Extendable):
                     t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t']),
                     )
 
-    def extend(self):
-        """Set the file names to run the next generation"""
-        self._x = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['x'])
-        self._v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v'])
-        self._t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t'])
-        self._generation += 1
-
     @property
     def generation(self):
         """The current generation"""
@@ -277,6 +270,14 @@ class Task(stream.Unique, api.Taskable, api.Extendable):
     def output_path(self, name):
         """Return the local filename"""
         return os.path.join(self.outputdir, os.path.basename(name))
+
+    ###################################################################### Implement the Extendable interface
+    def extend(self):
+        """Set the file names to run the next generation"""
+        self._x = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['x'])
+        self._v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v'])
+        self._t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t'])
+        self._generation += 1
 
     ###################################################################### Implement Taskable interface
     def to_task(self):
