@@ -151,7 +151,10 @@ class GenerationalWorkQueueStream(WorkQueueStream):
 
     @property
     def upstream(self):
+        # upstream tasks may have been resumed so update the local
+        # count and filter out the tasks  that have already finished
         for task in super(GenerationalWorkQueueStream, self).upstream:
+            self._count[task.uuid] = task.generation
             if self._is_submittable(task):
                 yield task
 
@@ -162,7 +165,7 @@ class GenerationalWorkQueueStream(WorkQueueStream):
         self._count[task.uuid] += 1
 
     def _is_submittable(self, task):
-        return task.uuid not in self._count or self._gen(task) < self._generations
+        return self._gen(task) < self._generations
 
     def process(self, task):
         if self._is_submittable(task):
