@@ -60,7 +60,7 @@ def run_stream(iterable, stream_cls, extra_args=None, extra_kws=None):
 
 class IPersistableTaskStream(Stream):
     """
-    Taskable a => Stream a -> Stream a
+    Persistable a => Stream a -> Stream a
     """
     def __init__(self, source, persist):
         super(IPersistableTaskStream, self).__init__(source)
@@ -83,7 +83,7 @@ class ResumeTaskStream(IPersistableTaskStream):
 
 class WorkQueueStream(Stream):
     """
-    WorkQueueStream :: Task t => Stream t -> Stream t
+    WorkQueueStream :: Persistable t, Task t => Stream t -> Stream t
     """
     def __init__(self, q, source, timeout=5, persist_to=None):
         super(WorkQueueStream, self).__init__(source)
@@ -139,7 +139,7 @@ class WorkQueueStream(Stream):
 
 class GenerationalWorkQueueStream(WorkQueueStream):
     """
-    GenerationalWorkQueueStream :: Extendable t, Taskable t => Stream t -> Stream t
+    GenerationalWorkQueueStream :: Persistable t, Extendable t, Taskable t => Stream t -> Stream t
 
     Run tasks for a given number of generations using the `.extend` method
     """
