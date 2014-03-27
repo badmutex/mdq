@@ -42,6 +42,6 @@ if __name__ == '__main__':
 
     fount     = MockFount()
     persist   = ResumeTaskStream(fount, store)
-    submit    = GenerationalWorkQueueStream(q, persist, timeout=1, persist_stream=store, generations=2)
+    submit    = GenerationalWorkQueueStream(q, persist, timeout=1, persist_to=store, generations=2)
     sink      = MockSink(submit)
     sink()

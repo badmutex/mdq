@@ -88,12 +88,12 @@ class WorkQueueStream(Stream):
     """
     WorkQueueStream :: Task t => Stream t -> Stream t
     """
-    def __init__(self, q, source, timeout=5, persist_stream=None):
+    def __init__(self, q, source, timeout=5, persist_to=None):
         super(WorkQueueStream, self).__init__(source)
         self._q = q
         self._timeout = timeout
         self._table = dict() # Task t => uuid -> t
-        self._persist_stream = persist_stream
+        self._persist_to = persist_to
 
     @property
     def wq(self): return self._q
@@ -105,10 +105,10 @@ class WorkQueueStream(Stream):
         return len(self._table)
 
     def _persist(self, taskable):
-        if self._persist_stream is not None:
+        if self._persist_to is not None:
             run_stream((lambda: (yield taskable))(),
                        PersistTaskStream,
-                       extra_args = [self._persist_stream])
+                       extra_args = [self._persist_to])
 
     def submit(self, taskable):
         task = taskable.to_task()
