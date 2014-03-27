@@ -5,6 +5,7 @@ from .. import workqueue as wq
 
 import mdprep
 
+import hashlib
 import os
 import random
 import tempfile
@@ -143,8 +144,12 @@ class Prepare(api.Preparable):
             nsteps = int(self._picoseconds / dt)
             tpr_set_scalar(tpr2, 'nsteps', nsteps)
 
+        sha256 = hashlib.sha256()
+        sha256.update(open(tpr2, 'rb').read())
+        digest = sha256.hexdigest()
+
         task = Task(x=gps['x'], v=gps['v'], t=gps['t'], tpr=tpr2,
-                    outputdir=outdir, cpus=self._cpus)
+                    outputdir=outdir, cpus=self._cpus, digest=digest)
 
         task.add_binary(self._mdrun)
         task.add_binary(self._guamps_get)
@@ -185,7 +190,7 @@ class Task(stream.Unique, api.Taskable, api.Extendable):
 
     def __init__(self,
                  x='x.gps', v='v.gps', t='t.gps', tpr='topol.tpr',
-                 outputdir=None, cpus=0
+                 outputdir=None, cpus=0, digest=None
                  ):
 
         super(Task, self).__init__()
@@ -196,6 +201,7 @@ class Task(stream.Unique, api.Taskable, api.Extendable):
         self._tpr       = tpr
         self._outputdir = outputdir if outputdir is not None else os.path.splitext(tpr)[0] + '.mdq'
         self._cpus      = cpus
+        self._digest    = digest
 
         self._generation = 0
         self._binaries   = list()
@@ -278,6 +284,11 @@ class Task(stream.Unique, api.Taskable, api.Extendable):
         self._v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v'])
         self._t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t'])
         self._generation += 1
+
+    @property
+    def digest(self):
+        return self._digest
+
 
     ###################################################################### Implement Taskable interface
     def to_task(self):

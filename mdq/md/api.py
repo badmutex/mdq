@@ -17,6 +17,14 @@ class Extendable(object):
         """
         raise NotImplemented
 
+    @property
+    def digest(self):
+        """
+        Return the hexdigest of the initial input files
+        """
+        raise NotImplemented
+
+
 class Preparable(object):
     """
     Different MD backends may require different steps to create a `Taskable`.
