@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
-from mdq.stream    import Fount, GenerationalWorkQueueStream, Sink
+from mdq.persistence import Persistent
+from mdq.stream    import Fount, ResumeTaskStream, GenerationalWorkQueueStream, Sink
 from mdq.workqueue import MkWorkQueue, WorkQueue
 import mdq.md.gmx as gmx
 import mdq.util
@@ -37,7 +38,10 @@ if __name__ == '__main__':
         fd.write('#')
         q.specify_log(fd.name)
 
+    store     = Persistent('task-state.mdq')
+
     fount     = MockFount()
-    submit    = GenerationalWorkQueueStream(q, fount, timeout=1, generations=2)
+    persist   = ResumeTaskStream(fount, store)
+    submit    = GenerationalWorkQueueStream(q, persist, timeout=1, persist_stream=store, generations=2)
     sink      = MockSink(submit)
     sink()
