@@ -261,6 +261,7 @@ class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
         return dict(x = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['x']),
                     v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v']),
                     t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t']),
+                    log=os.path.join(self.outputdir, LOGFILE),
                     )
 
     @property
@@ -307,6 +308,7 @@ class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
         task.specify_input_file(self._tpr  , SCRIPT_INPUT_NAMES['tpr'], cache=True , name='tpr')
 
         # output files
+        task.specify_output_file(self.output_files['log'], LOGFILE                 , cache=False, name='log')
         task.specify_output_file(self.output_files['x'], SCRIPT_OUTPUT_NAMES['x']  , cache=False, name='x_o')
         task.specify_output_file(self.output_files['v'], SCRIPT_OUTPUT_NAMES['v']  , cache=False, name='v_o')
         task.specify_output_file(self.output_files['t'], SCRIPT_OUTPUT_NAMES['t']  , cache=False, name='t_o')
