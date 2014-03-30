@@ -1,0 +1,33 @@
+from .. import state
+
+import argparse
+
+import os
+
+
+
+def getopts():
+    p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p.add_argument('backend', choices=['gromacs'], help='The backend type')
+    p.add_argument('-T', '--total-time', default=-1, type=int, help='Total number of picoseconds to run')
+    p.add_argument('-t', '--time', default=1000, type=int, help='Number of picoseconds to run each generation')
+    p.add_argument('-c', '--cpus', default=1, type=int, help='Number of CPUs to run each simulation')
+    p.add_argument('-b', '--binaries', default='binaries',
+                   help='Where to find the OS and ARCH -dependent files')
+    p.add_argument('-s', '--seed', default=None, help='Seed the random number generator with this value')
+
+    return p.parse_args()
+
+def main():
+    opts = getopts()
+
+    cfg = state.Config(
+        backend=opts.backend,
+        total_time=opts.total_time,
+        time=opts.time,
+        cpus=opts.cpus,
+        binaries=opts.binaries,
+        seed=opts.seed
+        )
+
+    cfg.write()

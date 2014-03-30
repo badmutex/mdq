@@ -1,5 +1,4 @@
 from .  import api
-from .. import command
 from .. import stream
 from .. import workqueue as wq
 
@@ -119,7 +118,7 @@ class Prepare(api.Preparable):
         self._guamps_set = guamps_set
         self._keep_trajfiles = keep_trajfiles
 
-    def task(self, tpr, outputdir=None, seed=None):
+    def task(self, tpr, x=None, v=None, t=None, outputdir=None, seed=None, digest=None):
         outdir = outputdir or tpr + '.mdq'
         mdprep.util.ensure_dir(outdir)
 
@@ -133,6 +132,16 @@ class Prepare(api.Preparable):
                    v = os.path.join(gendir, SCRIPT_INPUT_NAMES['v']),
                    t = os.path.join(gendir, SCRIPT_INPUT_NAMES['t']))
 
+        if x is not None: shutil.copy(x, gps['x'])
+        if v is not None: shutil.copy(v, gps['v'])
+        if t is not None:
+            if type(t) is float:
+                with open(gps['t'], 'w') as fd: fd.write(str(t))
+            elif type(t) is str:
+                shutil.copy(t, gps['t'])
+            else: raise ValueError, 'Illegal state: invalid time spec %s' % t
+
+
         for sel, key in SELECTIONS.iteritems():
             guamps_get(f=tpr2, s=sel, o=gps[key])
 
@@ -144,9 +153,10 @@ class Prepare(api.Preparable):
             nsteps = int(self._picoseconds / dt)
             tpr_set_scalar(tpr2, 'nsteps', nsteps)
 
-        sha256 = hashlib.sha256()
-        sha256.update(open(tpr2, 'rb').read())
-        digest = sha256.hexdigest()
+        if not digest:
+            sha256 = hashlib.sha256()
+            sha256.update(open(tpr2, 'rb').read())
+            digest = sha256.hexdigest()
 
         task = Task(x=gps['x'], v=gps['v'], t=gps['t'], tpr=tpr2,
                     outputdir=outdir, cpus=self._cpus, digest=digest)
