@@ -63,12 +63,20 @@ class Spec(dict):
         return h.hexdigest()
 
 class Config(object):
-    def __init__(self, backend='gromacs', generations=float('inf'), time=1000, cpus=1, binaries=None, seed=19):
+    def __init__(self,
+                 backend='gromacs',
+                 generations=float('inf'),
+                 time=1000,
+                 outputfreq=500,
+                 cpus=1,
+                 binaries=None,
+                 seed=19):
 
         self.backend    = backend
         self.sims       = CADict()
         self.generations= generations
         self.time       = time
+        self.outputfreq = outputfreq
         self.cpus       = cpus
         self.binaries   = binaries
         self.seed       = seed

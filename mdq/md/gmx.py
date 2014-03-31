@@ -108,10 +108,11 @@ def tpr_get_scalar(tpr, name, mktype):
 
 class Prepare(api.Preparable):
     def __init__(self,
-                 picoseconds=None,
+                 picoseconds=None, outputfreq=None,
                  cpus=0, mdrun=None, guamps_get=None, guamps_set=None,
                  keep_trajfiles=True):
         self._picoseconds = picoseconds
+        self._outputfreq = outputfreq
         self._cpus = cpus
         self._mdrun = mdrun
         self._guamps_get = guamps_get
@@ -148,10 +149,16 @@ class Prepare(api.Preparable):
         if seed:
             tpr_set_scalar(tpr2, 'ld_seed', seed)
 
+        dt = tpr_get_scalar(tpr2, 'deltat', float)
         if self._picoseconds:
-            dt = tpr_get_scalar(tpr2, 'deltat', float)
             nsteps = int(self._picoseconds / dt)
             tpr_set_scalar(tpr2, 'nsteps', nsteps)
+
+        if self._outputfreq:
+            freq = int(self._outputfreq / dt)
+            # FIXME nstenergy, see badi/guamps#27
+            for attr in 'nstxout nstxtcout nstfout nstvout nstlog'.split():
+                tpr_set_scalar(tpr2, attr, freq)
 
         if not digest:
             sha256 = hashlib.sha256()

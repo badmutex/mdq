@@ -7,6 +7,7 @@ def main():
     cfg = state.Config.load()
     prep = gmx.Prepare(
         picoseconds    = cfg.time,
+        outputfreq     = cfg.outputfreq,
         cpus           = cfg.cpus,
         mdrun          = cfg.binary('mdrun'),
         guamps_get     = cfg.binary('guamps_get'),
