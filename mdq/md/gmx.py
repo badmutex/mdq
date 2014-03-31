@@ -1,6 +1,7 @@
 from .  import api
 from .. import stream
 from .. import workqueue as wq
+from ..log import logger
 
 import mdprep
 
@@ -92,12 +93,14 @@ guamps_get = mdprep.process.OptCommand('guamps_get')
 guamps_set = mdprep.process.OptCommand('guamps_set')
 
 def tpr_set_scalar(tpr, name, value):
+    logger.info1('Setting', name, '=', value, 'in', tpr)
     tmpfile = os.path.join(os.path.dirname(tpr), name +'.gps')
     with open(tmpfile, 'w') as fd: fd.write('%s\n' % value)
     guamps_set(f=tpr, s=name, i=tmpfile, O=True)
     os.unlink(tmpfile)
 
 def tpr_get_scalar(tpr, name, mktype):
+    logger.info1('Getting', name, 'from', tpr)
     tmpfile = os.path.join(os.path.dirname(tpr), name+'.gps')
     guamps_get(f=tpr, s=name, o=tmpfile)
     with open(tmpfile) as fd:
@@ -122,45 +125,60 @@ class Prepare(api.Preparable):
     def task(self, tpr, x=None, v=None, t=None, outputdir=None, seed=None, digest=None):
         outdir = outputdir or tpr + '.mdq'
         mdprep.util.ensure_dir(outdir)
+        logger.debug('Ensured', outdir, 'exists')
 
         tpr2 = os.path.join(outdir, 'topol.tpr')
         shutil.copy(tpr, tpr2)
+        logger.debug(tpr, '->', tpr2)
 
         gendir = os.path.join(outdir, '0')
         mdprep.util.ensure_dir(gendir)
+        logger.debug('Ensured', gendir, 'exists')
 
         gps = dict(x = os.path.join(gendir, SCRIPT_INPUT_NAMES['x']),
                    v = os.path.join(gendir, SCRIPT_INPUT_NAMES['v']),
                    t = os.path.join(gendir, SCRIPT_INPUT_NAMES['t']))
 
-        if x is not None: shutil.copy(x, gps['x'])
-        if v is not None: shutil.copy(v, gps['v'])
+        if x is not None:
+            shutil.copy(x, gps['x'])
+            logger.debug(x, '->', gps['x'])
+        if v is not None:
+            shutil.copy(v, gps['v'])
+            logger.debug(v, '->', gps['v'])
         if t is not None:
             if type(t) is float:
                 with open(gps['t'], 'w') as fd: fd.write(str(t))
+                logger.debug('Wrote', t, 'to', gps['t'])
             elif type(t) is str:
                 shutil.copy(t, gps['t'])
+                logger.debug(t, '->', gps['t'])
             else: raise ValueError, 'Illegal state: invalid time spec %s' % t
 
 
         for sel, key in SELECTIONS.iteritems():
+            logger.info1('Getting', sel, 'from', tpr2)
             guamps_get(f=tpr2, s=sel, o=gps[key])
 
         if seed:
+            logger.info1('Setting seed', seed)
             tpr_set_scalar(tpr2, 'ld_seed', seed)
 
         dt = tpr_get_scalar(tpr2, 'deltat', float)
         if self._picoseconds:
             nsteps = int(self._picoseconds / dt)
+            logger.info1('Running for', self._picoseconds, 'ps as', nsteps, 'nsteps')
             tpr_set_scalar(tpr2, 'nsteps', nsteps)
 
         if self._outputfreq:
             freq = int(self._outputfreq / dt)
             # FIXME nstenergy, see badi/guamps#27
             for attr in 'nstxout nstxtcout nstfout nstvout nstlog'.split():
+                logger.info1('Setting output frequency', self._outputfreq,
+                             'for', attr, 'as', freq, 'steps', 'in', tpr2)
                 tpr_set_scalar(tpr2, attr, freq)
 
         if not digest:
+            logger.info1('Computing digest for', tpr2)
             sha256 = hashlib.sha256()
             sha256.update(open(tpr2, 'rb').read())
             digest = sha256.hexdigest()
@@ -226,6 +244,7 @@ class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
 
     def _keep_XXX(self, suffix):
         """Mark a simulation output file to be transferred back from the worker"""
+        logger.debug('Task keeping', suffix, 'as', TRAJ_FILES[suffix])
         self._trajfiles.append(TRAJ_FILES[suffix])
 
     def keep_trr(self):
@@ -251,16 +270,19 @@ class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
 
     def add_binary(self, path):
         """Add a binary file to cache"""
+        logger.debug('Adding binary', path)
         self._binaries.append(path)
 
     def check_binaries(self):
         """Checks that the required executables (EXECUTABLES) have been added"""
+        logger.debug('Checking that all executables were added')
         found    = 0
         notfound = list()
         for path in self._binaries:
             base = os.path.basename(path)
             for name in EXECUTABLES:
                 if name == base:
+                    logger.debug('Found', name, 'as', path)
                     found += 1
                     continue
                 notfound.append(name)
@@ -303,6 +325,7 @@ class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
     ###################################################################### Implement the Extendteable interface
     def extend(self):
         """Set the file names to run the next generation"""
+        logger.debug('Extending generation:', self._generation, '->', self._generation + 1)
         self._x = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['x'])
         self._v = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['v'])
         self._t = os.path.join(self.outputdir, SCRIPT_OUTPUT_NAMES['t'])
@@ -310,8 +333,10 @@ class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
 
     ###################################################################### Implement Taskable interface
     def to_task(self):
+        logger.info('Creating task for', self.digest)
 
         mdprep.util.ensure_dir(self.outputdir)
+        logger.debug('Ensured', self.outputdir, 'exists')
 
         cmd = 'bash %(script)s > %(log)s' % dict(script = SCRIPT_NAME, log = LOGFILE)
         task = wq.Task(cmd)
@@ -336,6 +361,8 @@ class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
 
         for name in self._trajfiles:
             task.specify_output_file(self.output_path(name), name, cache=False)
+
+        logger.debug('Created task:\n', str(task))
 
         return task
 
