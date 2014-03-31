@@ -5,14 +5,12 @@ from ..workqueue import MkWorkQueue
 import argparse
 
 
-def getopts():
-    p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def build_parser(p):
     p.add_argument('-p', '--port', default=9123, type=int, help='Work Queue port')
     p.add_argument('-r', '--replicate', default=1, type=int, help='Task replication')
     p.add_argument('-d', '--debug', action='store_true', help='Turn on debugging information')
     p.add_argument('-l', '--logfile', default=None, help='Write the workqueue log to this file')
 
-    return p.parse_args()
 
 
 class TaskFount(Fount):
@@ -26,8 +24,7 @@ class TaskSink(Sink):
     def consume(self, task):
         print 'Complete', task.digest
     
-def main():
-    opts = getopts()
+def main(opts):
 
     mkq = (
         MkWorkQueue()

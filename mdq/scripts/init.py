@@ -1,10 +1,14 @@
+"""
+Initialize an mdq project
+
+An MD backend must be specified (eg, `gromacs`).
+"""
+
 from .. import state
 
-import argparse
 import os.path
 
-def getopts():
-    p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def build_parser(p):
     p.add_argument('backend', choices=['gromacs'], help='The backend type')
     p.add_argument('-g', '--generations', default=float('inf'), type=int,
                     help='Number of generations to run')
@@ -16,10 +20,7 @@ def getopts():
                    help='Where to find the OS and ARCH -dependent files')
     p.add_argument('-s', '--seed', default=None, help='Seed the random number generator with this value')
 
-    return p.parse_args()
-
-def main():
-    opts = getopts()
+def main(opts):
 
     if os.path.exists(state.CONFIG):
         cfg = state.Config.load(path=state.CONFIG)

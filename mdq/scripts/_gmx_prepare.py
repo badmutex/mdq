@@ -1,9 +1,16 @@
+"""
+Prepare files that have been added to the mdq project
+"""
+
 from .. import state
 from ..md import gmx
 
 import os
 
-def main():
+def build_parser(p):
+    pass
+
+def main(opts):
     cfg = state.Config.load()
     prep = gmx.Prepare(
         picoseconds    = cfg.time,

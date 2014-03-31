@@ -1,11 +1,16 @@
-from .. import state
-from ..md import gmx
+"""
+Add input files to a project.
 
-import argparse
+Each time `add` is called, the parameters and the contents
+of any provided files are hashed so that only new files are
+actually added.
+"""
+
+from .. import state
+
 import random
 
-def getopts():
-    p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def build_parser(p):
     p.add_argument('-T', '--tpr', required=True)
     p.add_argument('-X', '--traj',
                    help='If given, continue the trajectory from the final position, velocities, and time')
@@ -13,11 +18,8 @@ def getopts():
     p.add_argument('-v', '--velocities', help='If given, use the velocities from this GUAMPS vector file')
     p.add_argument('-t', '--time', type=float, default=None, help='If given, start the simulation at this time')
 
-    return p.parse_args()
 
-
-def main():
-    opts = getopts()
+def main(opts):
     cfg  = state.Config.load()
     if cfg.seed is not None:
         random.seed(cfg.seed)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from mdq.scripts import init
+from mdq.scripts import mdq
 
 if __name__ == '__main__':
-    init.main()
+   mdq.main()
