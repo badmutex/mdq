@@ -145,6 +145,8 @@ class State(object):
 
     def values(self): return self._p.values()
 
+    def keys(self): return self._p.keys()
+
     def __enter__(self):
         return self
 

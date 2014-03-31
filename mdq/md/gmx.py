@@ -89,6 +89,7 @@ grompp     = mdprep.gmx.grompp
 genion     = mdprep.gmx.genion
 genbox     = mdprep.gmx.genbox
 mdrun      = mdprep.gmx.mdrun
+trjcat     = mdprep.process.OptCommand('trjcat')
 guamps_get = mdprep.process.OptCommand('guamps_get')
 guamps_set = mdprep.process.OptCommand('guamps_set')
 
