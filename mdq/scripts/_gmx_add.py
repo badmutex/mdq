@@ -36,4 +36,5 @@ def main(opts):
 
 
     cfg.add(spec)
+    cfg.seed = spec['seed']
     cfg.write()
