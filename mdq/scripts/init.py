@@ -27,13 +27,13 @@ def main():
         cfg = state.Config()
 
     cfg.update(
-        backend=opts.backend,
-        generations=opts.generations,
-        time=opts.time,
-        outputfreq=opts.outputfreq,
-        cpus=opts.cpus,
-        binaries=opts.binaries,
-        seed=opts.seed
+        backend     = opts.backend,
+        generations = opts.generations,
+        time        = opts.time,
+        outputfreq  = opts.outputfreq,
+        cpus        = opts.cpus,
+        binaries    = opts.binaries,
+        seed        = opts.seed
         )
 
     cfg.write()
