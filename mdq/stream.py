@@ -165,7 +165,7 @@ class GenerationalWorkQueueStream(WorkQueueStream):
         self._count[task.uuid] += 1
 
     def _is_submittable(self, task):
-        return self._gen(task) < self._generations
+        return self._gen(task) < self._generations - 1
 
     def process(self, task):
         if self._is_submittable(task):
