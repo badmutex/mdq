@@ -1,6 +1,7 @@
 from .. import state
 
 import argparse
+import os.path
 
 def getopts():
     p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -20,7 +21,12 @@ def getopts():
 def main():
     opts = getopts()
 
-    cfg = state.Config(
+    if os.path.exists(state.CONFIG):
+        cfg = state.Config.load(path=state.CONFIG)
+    else:
+        cfg = state.Config()
+
+    cfg.update(
         backend=opts.backend,
         generations=opts.generations,
         time=opts.time,

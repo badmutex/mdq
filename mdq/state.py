@@ -81,6 +81,11 @@ class Config(object):
         self.binaries   = binaries
         self.seed       = seed
 
+    def update(self, **kws):
+        for key, val in kws.iteritems():
+            if key not in self.__dict__: raise ValueError, 'Unexpected attribute %s = %s' % (key, val)
+            setattr(self, key, val)
+
     def add(self, spec):
         self.sims.add(spec)
 
