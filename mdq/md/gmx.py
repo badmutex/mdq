@@ -193,6 +193,9 @@ class Prepare(api.Preparable):
         if self._keep_trajfiles:
             task.keep_trajfiles()
 
+        logger.info('Prepared', digest, 'from', tpr)
+        for k in self.__dict__:
+            logger.info(10*' ', k.lstrip('_'), '=', getattr(self, k))
         return task
 
 class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
@@ -333,7 +336,7 @@ class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
 
     ###################################################################### Implement Taskable interface
     def to_task(self):
-        logger.info('Creating task for', self.digest)
+        logger.info1('Creating task for', self.digest)
 
         mdprep.util.ensure_dir(self.outputdir)
         logger.debug('Ensured', self.outputdir, 'exists')

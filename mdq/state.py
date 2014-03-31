@@ -3,7 +3,6 @@ from .log import logger
 from .persistence import Persistent
 from .stringio import StringIO
 
-import yaml
 
 import hashlib
 import os
@@ -40,6 +39,10 @@ class CADict(object):
         h = obj.digest()
         if h not in self._d:
             self._d[h] = obj
+
+    def __str__(self):
+        return str(self._d)
+
 
 
 def hash_file(hasher, path, size=32*1024*1024):
@@ -114,6 +117,15 @@ class Config(object):
         p['config'] = self
         p.close()
         logger.debug('Wrote:', path)
+
+    def __str__(self):
+        with StringIO() as sio:
+            sio.writeln('config:')
+            sio.indent()
+            for item in self.__dict__.iteritems():
+                sio.writeln('%s: %s' % item)
+            sio.dedent()
+            return sio.getvalue().strip()
 
     @classmethod
     def load(cls, path=None):

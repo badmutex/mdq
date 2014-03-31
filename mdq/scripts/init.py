@@ -5,6 +5,7 @@ An MD backend must be specified (eg, `gromacs`).
 """
 
 from .. import state
+from ..log import logger
 
 import os.path
 
@@ -23,6 +24,7 @@ def build_parser(p):
 def main(opts):
 
     if os.path.exists(state.CONFIG):
+        logger.info1('Loading previous state from', state.CONFIG)
         cfg = state.Config.load(path=state.CONFIG)
     else:
         cfg = state.Config()
@@ -38,3 +40,4 @@ def main(opts):
         )
 
     cfg.write()
+    logger.info('Configured:\n', str(cfg))

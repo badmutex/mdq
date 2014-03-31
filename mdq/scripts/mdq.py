@@ -32,5 +32,6 @@ def getopts():
 def main():
     opts = getopts()
     verbosity_levels = [log.info, log.info1, log.info2, log.debug]
-    verbosity_levels[opts.verbosity]()
+    level = opts.verbosity if opts.verbosity < len(verbosity_levels) else -1
+    verbosity_levels[level]()
     SUBCMDS[opts.command].main(opts)
