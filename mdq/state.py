@@ -107,11 +107,20 @@ class State(object):
 
     def __getitem__(self, key): return self._p[key]
 
+    def values(self): return self._p.values()
+
     def __enter__(self):
         return self
 
     def __exit__(self, type, value, traceback):
         self._p.sync()
+
+    @property
+    def store(self): return self._p
+
+    @classmethod
+    def load(cls, path=STATE):
+        return cls(path)
 
 
 
