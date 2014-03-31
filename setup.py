@@ -13,6 +13,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
+import glob
 import os
 import subprocess
 import sys
@@ -112,6 +113,19 @@ def find_packages(root):
         packages.append(package)
     return packages
 
+###################################################################### scripts
+
+if 'setuptools' in sys.modules:
+    setup_kws['entry_points'] = {
+        'console_scripts' : [
+            'mdq-init = mdq.scripts.init:main',
+            'mdq-add  = mdq.scripts._gmx_add:main',
+            'mdq-prepare = mdq.scripts._gmx_prepare:main',
+            'mdq-run = mdq.scripts.run:main'
+            ]
+        }
+else:
+    setup_kws['scripts'] = glob.glob('scripts/*')
 
 ###################################################################### run Setup
 write_version_py('mdq/version.py')
