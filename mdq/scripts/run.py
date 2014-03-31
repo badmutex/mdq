@@ -35,13 +35,21 @@ def main():
         .replicate(opts.replicate)
         )
     if opts.debug: mkq.debug_all()
+    if opts.logfile:
+        mkq.logfile(opts.logfile)
+        # add a comment to make numpy loading simpler
+        # +FIXME: should be moved to pwq
+        with open(opts.logfile, 'a') as fd: fd.write('#')
 
     q = mkq()
 
+    cfg = state.Config.load()
     with state.State.load() as st:
         fount = TaskFount()
         fount.set_state(st)
         persist = ResumeTaskStream(fount, st.store)
-        submit = GenerationalWorkQueueStream(q, persist, timeout=5, persist_to=st.store, generations=2)
+        submit = GenerationalWorkQueueStream(q, persist, timeout=5,
+                                             persist_to=st.store,
+                                             generations=cfg.generations)
         sink = TaskSink(submit)
         sink()
