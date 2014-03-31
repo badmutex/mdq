@@ -1,6 +1,9 @@
 
+from .log import logger
 from .persistence import Persistent
 from .stringio import StringIO
+
+import yaml
 
 import hashlib
 import os
@@ -62,6 +65,12 @@ class Spec(dict):
             h.update(data)
         return h.hexdigest()
 
+    def __str__(self):
+        with StringIO() as sio:
+            for k, v in self.iteritems():
+                sio.writeln('%s: %s' % (k, v))
+            return sio.getvalue().strip()
+
 class Config(object):
     def __init__(self,
                  backend='gromacs',
@@ -88,6 +97,7 @@ class Config(object):
 
     def add(self, spec):
         self.sims.add(spec)
+        logger.info('Added specification:\n%s' % spec)
 
     def binary(self, name):
         """
@@ -103,6 +113,7 @@ class Config(object):
         p = Persistent(path)
         p['config'] = self
         p.close()
+        logger.debug('Wrote:', path)
 
     @classmethod
     def load(cls, path=None):

@@ -1,3 +1,5 @@
+from .log import logger
+
 import work_queue as ccl
 
 import collections
@@ -103,11 +105,13 @@ class WorkQueueStream(Stream):
 
     def _persist(self, taskable):
         if self._persist_to is not None:
+            logger.debug('%-15s' % 'Persisting', taskable.uuid)
             run_stream((lambda: (yield taskable))(),
                        PersistTaskStream,
                        extra_args = [self._persist_to])
 
     def submit(self, taskable):
+        logger.debug('%-15s' % 'Submitting', taskable.uuid)
         task = taskable.to_task()
         self._table[task.uuid] = taskable
         return self.wq.submit(task)
@@ -118,6 +122,7 @@ class WorkQueueStream(Stream):
     def wait(self):
         result = self.wq.wait(self._timeout)
         if result:
+            logger.info1('%-15s' % 'Received', result.uuid)
             taskable = self._table[result.uuid]
             taskable.update_task(result)
             del self._table[result.uuid]
@@ -156,6 +161,7 @@ class GenerationalWorkQueueStream(WorkQueueStream):
         for task in super(GenerationalWorkQueueStream, self).upstream:
             self._count[task.uuid] = task.generation
             if self._is_submittable(task):
+                logger.info('%-15s' % 'Continuing', task.uuid, 'from generation', self._gen(task))
                 yield task
 
     def _gen(self, task):
@@ -169,11 +175,13 @@ class GenerationalWorkQueueStream(WorkQueueStream):
 
     def process(self, task):
         if self._is_submittable(task):
+            logger.info('%-15s' % 'Extending', task.uuid, 'to generation', self._gen(task)+1)
             self._incr(task)
             task.extend()
             self.submit(task)
             yield None
         else:
+            logger.info('%-15s' % 'Stopping', task.uuid, 'at generation', self._gen(task))
             del self._count[task.uuid]
             yield task
 

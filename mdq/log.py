@@ -22,6 +22,7 @@ class Logger(object):
         strs = len(args) * ['%s']
         fmt  = '%-9s ' % lvl_name(lvl) + ' '.join(strs)
         fmt  += '\n'
+        args = map(str, args)
         args = map(lambda s: s.replace('\n', '\n' + 10*' '), args)
         self._stream.write(fmt % tuple(args))
     

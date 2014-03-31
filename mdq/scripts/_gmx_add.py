@@ -7,6 +7,7 @@ actually added.
 """
 
 from .. import state
+from .. import log
 
 import random
 
@@ -36,4 +37,3 @@ def main(opts):
 
     cfg.add(spec)
     cfg.write()
-

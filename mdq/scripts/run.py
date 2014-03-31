@@ -20,10 +20,6 @@ class TaskFount(Fount):
     def generate(self):
         return iter(self._state.values())
 
-class TaskSink(Sink):
-    def consume(self, task):
-        print 'Complete', task.digest
-    
 def main(opts):
 
     mkq = (
@@ -48,5 +44,5 @@ def main(opts):
         submit = GenerationalWorkQueueStream(q, persist, timeout=5,
                                              persist_to=st.store,
                                              generations=cfg.generations)
-        sink = TaskSink(submit)
+        sink = Sink(submit)
         sink()
