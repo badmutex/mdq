@@ -22,7 +22,8 @@ def getopts():
     subparsers = parser.add_subparsers(dest='command')
 
     for key, module in SUBCMDS.iteritems():
-        p = subparsers.add_parser(key, description=module.__doc__)
+        p = subparsers.add_parser(key, description=module.__doc__,
+                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         module.build_parser(p)
 
     return parser.parse_args()
