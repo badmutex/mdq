@@ -14,7 +14,9 @@ def main(opts):
     st  = state.State.load()
 
     for h in sorted(st.keys()):
-        logger.info('{:.<30s}'.format(cfg.aliases[h]),
-                    '%s'    % (st[h].generation + 1),
-                    '/ %s'  % cfg.generations
-                    )
+        logger.info('{:.<30s} {} / {}'.format(
+            cfg.aliases[h],
+            st[h].generation + 1,
+            cfg.generations,
+            )
+        )
