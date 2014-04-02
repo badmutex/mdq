@@ -1,4 +1,4 @@
-from .  import init, _gmx_add, _gmx_prepare, run, _gmx_cat
+from .  import init, _gmx_add, _gmx_prepare, run, _gmx_cat, status
 from .. import state
 from .. import log
 from .. import version
@@ -15,6 +15,7 @@ def getopts():
     SUBCMDS['prepare'] = _gmx_prepare
     SUBCMDS['run'] = run
     SUBCMDS['cat'] = _gmx_cat
+    SUBCMDS['status']= status
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-v', '--verbosity', action='count', default=0, help='Increase verbosity')
