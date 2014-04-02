@@ -156,6 +156,8 @@ class State(object):
 
     def __getitem__(self, key): return self._p[key]
 
+    def __contains__(self, el): return self._p.__contains__(el)
+
     def values(self): return self._p.values()
 
     def keys(self): return self._p.keys()

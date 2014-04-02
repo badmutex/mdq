@@ -25,6 +25,7 @@ def main(opts):
     with state.State(state.STATE) as st:
 
         for h in cfg.sims:
+            if h in st: continue
             spec  = cfg.sims[h]
             st[h] = prep.task(
                 spec['tpr'],
