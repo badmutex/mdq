@@ -20,7 +20,7 @@ def list_traj_parts(prefix, suffix):
     return glob.glob(os.path.join(prefix, '*', '*'+suffix))
 
 def cat_traj_parts(parts, out):
-    logger.info('Writting', out, '\n' + '\n'.join(parts))
+    logger.info('Writing', out, '\n' + '\n'.join(parts))
     gmx.trjcat(f = ' '.join(parts), o = out)
 
 def cat(simdir, suffix, out):
