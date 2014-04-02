@@ -2,6 +2,7 @@ from .  import api
 from .. import stream
 from .. import workqueue as wq
 from ..log import logger
+from ..util import TempEnv
 
 import mdprep
 
@@ -92,6 +93,16 @@ mdrun      = mdprep.gmx.mdrun
 trjcat     = mdprep.process.OptCommand('trjcat')
 guamps_get = mdprep.process.OptCommand('guamps_get')
 guamps_set = mdprep.process.OptCommand('guamps_set')
+
+
+def disable_gromacs_backups():
+    """
+    Intended to be used in a `with` statement:
+    eg.
+    >>> with disable_gromacs_backups():
+    ...    ...
+    """
+    return TempEnv(GMX_MAXBACKUP=-1)
 
 def tpr_set_scalar(tpr, name, value):
     logger.info1('Setting', name, '=', value, 'in', tpr)

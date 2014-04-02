@@ -37,4 +37,5 @@ def main(opts):
         if opts.xtc: suffixes.append('.xtc')
         if opts.trr: suffixes.append('.trr')
         for suffix in suffixes:
-            cat(simdir, suffix, out)
+            with gmx.disable_gromacs_backups():
+                cat(simdir, suffix, out)
