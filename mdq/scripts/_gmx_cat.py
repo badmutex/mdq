@@ -29,9 +29,10 @@ def cat(simdir, suffix, out):
 
 def main(opts):
     hashes = state.State.load().keys()
+    names  = state.Config.load().aliases
     suffixes = list()
     for h in  hashes:
-        out = os.path.join(opts.outputdir, h)
+        out = os.path.join(opts.outputdir, names[h])
         mdprep.util.ensure_dir(out)
         simdir = os.path.join(state.SIMS, h)
         if opts.xtc: suffixes.append('.xtc')

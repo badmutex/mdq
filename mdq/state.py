@@ -34,9 +34,9 @@ class CADict(object):
     def add(self, obj):
         """
         Only add the object if it has not been previously added
-        obj: must provide a `digest` method returning the hexdigest
+        obj: must provide a `digest` property returning the hexdigest
         """
-        h = obj.digest()
+        h = obj.digest
         if h not in self._d:
             self._d[h] = obj
 
@@ -58,7 +58,11 @@ def hash_file(hasher, path, size=32*1024*1024):
 class Spec(dict):
     """:: name -> str """
 
-    def digest(self):
+    def __init__(self, *args, **kws):
+        super(Spec, self).__init__(*args, **kws)
+        self._digest = None
+
+    def update_digest(self):
         h = hashlib.sha256()
         for obj in self.keys() + self.values():
             if os.path.exists(str(obj)):
@@ -66,7 +70,12 @@ class Spec(dict):
             else:
                 data = repr(obj)
             h.update(data)
-        return h.hexdigest()
+        self._digest = h.hexdigest()
+
+    @property
+    def digest(self):
+        assert self._digest is not None
+        return self._digest
 
     def __str__(self):
         with StringIO() as sio:
@@ -92,6 +101,7 @@ class Config(object):
         self.cpus       = cpus
         self.binaries   = binaries
         self.seed       = seed
+        self.aliases    = dict() # digest -> string
 
     def update(self, **kws):
         for key, val in kws.iteritems():
@@ -101,6 +111,9 @@ class Config(object):
     def add(self, spec):
         self.sims.add(spec)
         logger.info('Added specification:\n%s' % spec)
+
+    def alias(self, digest, string):
+        self.aliases[digest] = string
 
     def binary(self, name):
         """

@@ -12,6 +12,7 @@ from .. import log
 import random
 
 def build_parser(p):
+    p.add_argument('-n', '--name', required=True, help='Provide a descriptive name for this simulation')
     p.add_argument('-T', '--tpr', required=True)
     p.add_argument('-X', '--traj',
                    help='If given, continue the trajectory from the final position, velocities, and time')
@@ -27,6 +28,7 @@ def main(opts):
 
     spec = state.Spec()
 
+    spec['name'] = opts.name
     spec['tpr'] = opts.tpr
     spec['seed'] = random.randint(1, 10**5)
     if opts.traj       is not None: spec['traj'] = opts.traj
@@ -34,7 +36,8 @@ def main(opts):
     if opts.velocities is not None: spec['v'] = opts.velocities
     if opts.time       is not None: spec['t'] = opts.time
 
-
+    spec.update_digest()
     cfg.add(spec)
     cfg.seed = spec['seed']
+    cfg.alias(spec.digest, opts.name)
     cfg.write()
