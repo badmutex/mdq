@@ -117,12 +117,7 @@ def find_packages(root):
 
 if 'setuptools' in sys.modules:
     setup_kws['entry_points'] = {
-        'console_scripts' : [
-            'mdq-init = mdq.scripts.init:main',
-            'mdq-add  = mdq.scripts._gmx_add:main',
-            'mdq-prepare = mdq.scripts._gmx_prepare:main',
-            'mdq-run = mdq.scripts.run:main'
-            ]
+        'console_scripts' : ['mdq = mdq.scripts.mdq:main']
         }
 else:
     setup_kws['scripts'] = glob.glob('scripts/*')
