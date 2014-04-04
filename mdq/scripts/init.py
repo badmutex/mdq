@@ -5,7 +5,7 @@ An MD backend must be specified (eg, `gromacs`).
 """
 
 from .. import state
-from ..log import logger
+from pxul.logging import logger
 
 import os.path
 
