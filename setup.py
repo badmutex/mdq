@@ -17,6 +17,7 @@ import glob
 import os
 import subprocess
 import sys
+import textwrap
 
 ###################################################################### prepare kw arguments to `setup`
 setup_kws = dict()
@@ -29,11 +30,6 @@ else:
     setup_kws['requires'] = dependencies
 
 ###################################################################### Version information
-VERSION = '0.1.0'
-ISRELEASED = False
-__version__ = VERSION
-
-######################################################################
 # Writing version control information to the module
 # adapted from MDTraj setup.py
 
@@ -65,37 +61,32 @@ def git_version():
 
 
 def write_version_py(filename):
-    cnt = """
-# THIS FILE IS GENERATED FROM MDPREP SETUP.PY
-short_version = '%(version)s'
-version = '%(version)s'
-full_version = '%(full_version)s'
-git_revision = '%(git_revision)s'
-release = %(isrelease)s
+    cnt = textwrap.dedent("""\
+    # THIS FILE IS GENERATED FROM SETUP.PY
+    version = '%(version)s'
+    short_version = version
+    full_version = '%(full_version)s'
+    release = %(isrelease)s
 
-if not release:
-    version = full_version
-"""
-    # Adding the git rev number needs to be done inside write_version_py(),
-    # otherwise the import of numpy.version messes up the build under Python 3.
-    FULLVERSION = VERSION
+    if not release:
+        version = full_version
+    """)
     if os.path.exists('.git'):
-        GIT_REVISION = git_version()
+        git_revision = git_version()
     else:
-        GIT_REVISION = 'Unknown'
-
-    if not ISRELEASED:
-        FULLVERSION += '.dev-' + GIT_REVISION[:7]
+        git_revision = 'Unknown'
 
     a = open(filename, 'w')
     try:
-        a.write(cnt % {'version': VERSION,
-                       'full_version': FULLVERSION,
-                       'git_revision': GIT_REVISION,
-                       'isrelease': str(ISRELEASED)})
+        keys = dict(
+            version      = git_revision[:7],
+            full_version = git_revision,
+            git_revision = git_revision,
+            isrelease    = ISRELEASED,
+            )
+        a.write(cnt % keys)
     finally:
         a.close()
-
 
 ###################################################################### Find my python modules
 
@@ -123,6 +114,10 @@ else:
     setup_kws['scripts'] = glob.glob('scripts/*')
 
 ###################################################################### run Setup
+ISRELEASED = False
+VERSION = git_version()[:7]
+__version__ = VERSION
+
 write_version_py('mdq/version.py')
 setup(name = 'mdq',
       author = "Badi' Abdul-Wahid",
