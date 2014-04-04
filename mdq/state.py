@@ -1,8 +1,8 @@
 
-from .log import logger
-from .persistence import Persistent
-from .stringio import StringIO
+from pxul.logging import logger
+from pxul.StringIO import StringIO
 
+from .persistence import Persistent
 
 import hashlib
 import os
