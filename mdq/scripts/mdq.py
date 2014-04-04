@@ -1,7 +1,8 @@
 from .  import init, _gmx_add, _gmx_prepare, run, _gmx_cat, status
 from .. import state
-from .. import log
 from .. import version
+
+from pxul import logging as log
 
 import argparse
 import collections
@@ -33,7 +34,7 @@ def getopts():
 
 def main():
     opts = getopts()
-    verbosity_levels = [log.info, log.info1, log.info2, log.debug]
+    verbosity_levels = [log.set_info, log.set_info1, log.set_info2, log.set_debug]
     level = opts.verbosity if opts.verbosity < len(verbosity_levels) else -1
     verbosity_levels[level]()
     SUBCMDS[opts.command].main(opts)
