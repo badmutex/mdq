@@ -1,8 +1,10 @@
 from .  import api
 from .. import stream
 from .. import workqueue as wq
-from ..log import logger
-from ..util import TempEnv
+
+import pxul
+from pxul.logging import logger
+from pxul.os import SetEnv
 
 import mdprep
 
@@ -90,9 +92,9 @@ grompp     = mdprep.gmx.grompp
 genion     = mdprep.gmx.genion
 genbox     = mdprep.gmx.genbox
 mdrun      = mdprep.gmx.mdrun
-trjcat     = mdprep.process.OptCommand('trjcat')
-guamps_get = mdprep.process.OptCommand('guamps_get')
-guamps_set = mdprep.process.OptCommand('guamps_set')
+trjcat     = pxul.command.OptCommand('trjcat')
+guamps_get = pxul.command.OptCommand('guamps_get')
+guamps_set = pxul.command.OptCommand('guamps_set')
 
 
 def disable_gromacs_backups():
@@ -102,7 +104,7 @@ def disable_gromacs_backups():
     >>> with disable_gromacs_backups():
     ...    ...
     """
-    return TempEnv(GMX_MAXBACKUP=-1)
+    return SetEnv(GMX_MAXBACKUP=-1)
 
 def tpr_set_scalar(tpr, name, value):
     logger.info1('Setting', name, '=', value, 'in', tpr)

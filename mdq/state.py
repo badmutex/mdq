@@ -1,8 +1,8 @@
 
-from .log import logger
-from .persistence import Persistent
-from .stringio import StringIO
+from pxul.logging import logger
+from pxul.StringIO import StringIO
 
+from .persistence import Persistent
 
 import hashlib
 import os
@@ -87,8 +87,8 @@ class Config(object):
     def __init__(self,
                  backend='gromacs',
                  generations=float('inf'),
-                 time=1000,
-                 outputfreq=500,
+                 time=None,
+                 outputfreq=None,
                  cpus=1,
                  binaries=None,
                  seed=19):
