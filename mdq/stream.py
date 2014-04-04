@@ -1,4 +1,4 @@
-from .log import logger
+from pxul.logging import logger
 
 import work_queue as ccl
 
