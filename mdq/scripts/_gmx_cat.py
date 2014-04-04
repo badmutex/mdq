@@ -3,8 +3,9 @@ Concatenate trajectory files from multiple generations of a simulation
 """
 
 from .. import state
-from ..log import logger
 from ..md import gmx
+
+from pxul.logging import logger
 
 import glob
 import mdprep
