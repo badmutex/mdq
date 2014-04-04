@@ -7,7 +7,6 @@ actually added.
 """
 
 from .. import state
-from .. import log
 
 import random
 
