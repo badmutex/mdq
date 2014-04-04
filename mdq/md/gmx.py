@@ -138,7 +138,7 @@ class Prepare(api.Preparable):
 
     def task(self, tpr, x=None, v=None, t=None, outputdir=None, seed=None, digest=None):
         outdir = outputdir or tpr + '.mdq'
-        mdprep.util.ensure_dir(outdir)
+        pxul.os.ensure_dir(outdir)
         logger.debug('Ensured', outdir, 'exists')
 
         tpr2 = os.path.join(outdir, 'topol.tpr')
@@ -146,7 +146,7 @@ class Prepare(api.Preparable):
         logger.debug(tpr, '->', tpr2)
 
         gendir = os.path.join(outdir, '0')
-        mdprep.util.ensure_dir(gendir)
+        pxul.os.ensure_dir(gendir)
         logger.debug('Ensured', gendir, 'exists')
 
         gps = dict(x = os.path.join(gendir, SCRIPT_INPUT_NAMES['x']),
@@ -219,7 +219,7 @@ class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
     The following example runs three generations of a simulations.
     In order to run, the binaries (mdrun, guamps_{g,s}et) need to be in the PATH
 
-    >>> import mdq.util
+    >>> import pxul
     >>> import mdq.workqueue as wq
     >>> import mdq.md.gromacs as gmx
     >>> sim = gmx.Task(x='tests/data/mdq/0/x.gps',
@@ -229,7 +229,7 @@ class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
     ...                )
     >>> sim.keep_trajfiles()
     >>> for name in gmx.EXECUTABLES:
-    ...     sim.add_binary(mdq.util.find_in_path(name))
+    ...     sim.add_binary(mdq.os.find_in_path(name))
     >>> worker = wq.WorkerEmulator() # doctest:+ELLIPSIS
     WorkerEmulator working ...
     >>> for gen in xrange(3): # 3 generations
@@ -352,7 +352,7 @@ class Task(stream.Unique, api.Taskable, api.Persistable, api.Extendable):
     def to_task(self):
         logger.info1('Creating task for', self.digest)
 
-        mdprep.util.ensure_dir(self.outputdir)
+        pxul.os.ensure_dir(self.outputdir)
         logger.debug('Ensured', self.outputdir, 'exists')
 
         cmd = 'bash %(script)s > %(log)s' % dict(script = SCRIPT_NAME, log = LOGFILE)
