@@ -3,7 +3,7 @@ Summarize the progress of the simulations
 """
 
 from .. import state
-from ..log import logger
+from pxul.logging import logger
 
 def build_parser(p):
     pass
