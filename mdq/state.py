@@ -160,6 +160,8 @@ class Config(object):
         if os.path.exists(path):
             cfg = self.__class__.load(path)
             self.sims.update(cfg.sims)
+        else:
+            self.write(path)
 
     def __str__(self):
         with StringIO() as sio:
@@ -173,12 +175,9 @@ class Config(object):
     @classmethod
     def load(cls, path=None):
         path = path or CONFIG
-        if os.path.exists(path):
-            p = Persistent(path)
-            c = p['config']
-            p.close()
-        else:
-            c = cls()
+        p = Persistent(path)
+        c = p['config']
+        p.close()
         return c
 
 class State(object):
