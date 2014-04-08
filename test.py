@@ -1,47 +1,27 @@
 #!/usr/bin/python
 
-from mdq.persistence import Persistent
-from mdq.stream    import Fount, ResumeTaskStream, GenerationalWorkQueueStream, Sink
-from mdq.workqueue import MkWorkQueue, WorkQueue
-import mdq.md.gmx as gmx
-import mdq.util
+import pxul
+from pwq import MkWorkQueue
+from mdq import mdqueue
+from mdq.md import gmx
+from mdq.state import Config
 
-
-class MockFount(Fount): # :: Stream gmx.Task
-    def generate(self):
-        sim = gmx.Prepare(picoseconds= 1,
-                          cpus       = 1,
-                          mdrun      = mdq.util.find_in_path('mdrun'),
-                          guamps_get = mdq.util.find_in_path('guamps_get'),
-                          guamps_set = mdq.util.find_in_path('guamps_set'),
-                          )
-
-        for i in xrange(5):
-            yield sim.task('tests/data/topol.tpr', outputdir='tests/sim/test%s' % i, seed=i)
-
-class MockSink(Sink):
-    def consume(self, task):
-        print 'Complete', task.uuid
 
 if __name__ == '__main__':
+
+    pxul.logging.set_debug()
 
     mkq = (
         MkWorkQueue()
         .port(9123)
         .replicate(8)
-        # .debug_all()
+        .debug_all()
     )
 
-    q = mkq()
+    cfg = Config(generations=2, time=5, outputfreq=0.01, cpus=8, binaries='binaries')
+    cfg.write('config.mdq')
 
-    with open('wq.log', 'w') as fd:
-        fd.write('#')
-        q.specify_log(fd.name)
-
-    store     = Persistent('task-state.mdq')
-
-    fount     = MockFount()
-    persist   = ResumeTaskStream(fount, store)
-    submit    = GenerationalWorkQueueStream(q, persist, timeout=1, persist_to=store, generations=2)
-    sink      = MockSink(submit)
-    sink()
+    q = mdqueue.MDQueue(mkq)
+    spec = gmx.Spec(name='test', tpr='tests/data/topol.tpr')
+    q.submit(spec)
+    q()

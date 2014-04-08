@@ -72,11 +72,13 @@ class IPersistableTaskStream(Stream):
 
 class PersistTaskStream(IPersistableTaskStream):
     def process(self, taskable):
+        logger.debug('PersistTaskStream: processing %s' % taskable.digest)
         self._persist[taskable.digest] = taskable
         yield taskable
 
 class ResumeTaskStream(IPersistableTaskStream):
     def process(self, taskable):
+        logger.debug('ResumeTaskStream: processing %s' % taskable.digest)
         if taskable.digest in self._persist:
             t = self._persist[taskable.digest]
         else:

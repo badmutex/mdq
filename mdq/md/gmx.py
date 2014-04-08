@@ -1,4 +1,5 @@
 from .  import api
+from .. import state
 from .. import stream
 from .. import workqueue as wq
 
@@ -123,6 +124,25 @@ def tpr_get_scalar(tpr, name, mktype):
     os.unlink(tmpfile)
     return value
 
+
+class Spec(api.Spec):
+    def __init__(self, name, tpr='topol.tpr'):
+        """
+        Create the specification for a GROMACS simulation
+        """
+        super(Spec, self).__init__(name = name,
+                                   tpr  = tpr,
+                                   )
+
+
+    def continue_traj(self, path):
+        self['traj'] = path
+
+    def continue_from(self, x='x.gps', v='v.gps', t='t.gps'):
+        self['x'] = x
+        self['v'] = v
+        self['t'] = t
+
 class Prepare(api.Preparable):
     def __init__(self,
                  picoseconds=None, outputfreq=None,
@@ -135,6 +155,29 @@ class Prepare(api.Preparable):
         self._guamps_get = guamps_get
         self._guamps_set = guamps_set
         self._keep_trajfiles = keep_trajfiles
+
+    @classmethod
+    def from_config(cls, cfg):
+        return cls(
+            picoseconds    = cfg.time,
+            outputfreq     = cfg.outputfreq,
+            cpus           = cfg.cpus,
+            mdrun          = cfg.binary('mdrun'),
+            guamps_get     = cfg.binary('guamps_get'),
+            guamps_set     = cfg.binary('guamps_set'),
+            keep_trajfiles = cfg.keep_trajfiles,
+            )
+
+    def task_from_spec(self, spec):
+        return self.task(
+            spec['tpr'],
+            x         = spec.get('x'),
+            v         = spec.get('v'),
+            t         = spec.get('t'),
+            outputdir = spec.get('outputdir', os.path.join('mdq-sims', spec['name'])),
+            seed      = spec.seed,
+            digest    = spec.digest,
+            )
 
     def task(self, tpr, x=None, v=None, t=None, outputdir=None, seed=None, digest=None):
         outdir = outputdir or tpr + '.mdq'

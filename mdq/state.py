@@ -6,6 +6,7 @@ from .persistence import Persistent
 
 import hashlib
 import os
+import random
 
 DOT_DIR = '.mdq'
 CONFIG = os.path.join(DOT_DIR, 'config')
@@ -38,7 +39,10 @@ class CADict(object):
         """
         h = obj.digest
         if h not in self._d:
+            logger.debug('Adding simulation: %s' % h)
             self._d[h] = obj
+        else:
+            logger.debug('Simulation already registered: %s' % h)
 
     def __str__(self):
         return str(self._d)
@@ -49,11 +53,15 @@ def hash_file(hasher, path, size=32*1024*1024):
     """
     Hash the contents of the file given by `path`, reading at most `size` bytes at a time
     """
+    logger.debug('Hashing file: path=%s buffersize=%s' % (path, size))
     with open(path, 'rb') as fd:
         while True:
             data = fd.read(size)
             if data == '': break
             hasher.update(data)
+
+def new_seed(minval=1, maxval=10**5):
+        return random.randint(minval, maxval)
 
 class Spec(dict):
     """:: name -> str """
@@ -61,26 +69,35 @@ class Spec(dict):
     def __init__(self, *args, **kws):
         super(Spec, self).__init__(*args, **kws)
         self._digest = None
+        self._seed = new_seed()
 
     def update_digest(self):
         h = hashlib.sha256()
-        for obj in self.keys() + self.values():
-            if os.path.exists(str(obj)):
+        for key, obj in self.iteritems():
+            if key == 'seed': continue
+            if os.path.isfile(str(obj)):
                 hash_file(h, str(obj))
-            else:
-                data = repr(obj)
-            h.update(data)
+            h.update(key)
+            h.update(repr(obj))
         self._digest = h.hexdigest()
 
     @property
     def digest(self):
-        assert self._digest is not None
+        if self._digest is None:
+            self.update_digest()
         return self._digest
+
+    @property
+    def seed(self): return self._seed
 
     def __str__(self):
         with StringIO() as sio:
+            sio.writeln('spec: %s' % self.__class__)
+            sio.indent()
             for k, v in self.iteritems():
                 sio.writeln('%s: %s' % (k, v))
+            sio.writeln('seed: %s' % self.seed)
+            sio.writeln('digest: %s' % self.digest)
             return sio.getvalue().strip()
 
 class Config(object):
@@ -89,6 +106,7 @@ class Config(object):
                  generations=float('inf'),
                  time=None,
                  outputfreq=None,
+                 keep_trajfiles=True,
                  cpus=1,
                  binaries=None,
                  seed=19):
@@ -98,6 +116,7 @@ class Config(object):
         self.generations= generations
         self.time       = time
         self.outputfreq = outputfreq
+        self.keep_trajfiles = keep_trajfiles
         self.cpus       = cpus
         self.binaries   = binaries
         self.seed       = seed
@@ -143,9 +162,12 @@ class Config(object):
     @classmethod
     def load(cls, path=None):
         path = path or CONFIG
-        p = Persistent(path)
-        c = p['config']
-        p.close()
+        if os.path.exists(path):
+            p = Persistent(path)
+            c = p['config']
+            p.close()
+        else:
+            c = cls()
         return c
 
 class State(object):
