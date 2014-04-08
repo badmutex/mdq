@@ -1,10 +1,17 @@
+from pxul.logging import logger
+
 import pickle
 import shelve
 
 class Persistent(object):
     def __init__(self, name, flag='c', protocol=0, writeback=False):
+        logger.debug('Opening %s' % name)
         shelf = shelve.open(name, flag=flag, protocol=protocol, writeback=writeback)
         object.__setattr__(self, '_shelf', shelf)
+        object.__setattr__(self, '_name', name)
+
+    @property
+    def name(self): return self._name
 
     def __getattribute__(self, attr):
         try:
@@ -18,7 +25,7 @@ class Persistent(object):
         return key in self._shelf
 
     def __del__(self):
-        self._shelf.close()
+        self.close()
 
     def __delitem__(self, key):
         del self._shelf[key]
@@ -37,3 +44,11 @@ class Persistent(object):
 
     def __str__(self):
         return str(self._shelf)
+
+    def sync(self):
+        logger.debug('Syncing %s' % self._name)
+        self._shelf.sync()
+
+    def close(self):
+        logger.debug('Closing %s' % self._name)
+        self._shelf.close()
