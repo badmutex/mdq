@@ -48,6 +48,9 @@ class CADict(object):
     def __str__(self):
         return str(self._d)
 
+    def update(self, other):
+        self._d.update(other._d)
+
 
 
 def hash_file(hasher, path, size=32*1024*1024):
@@ -123,6 +126,8 @@ class Config(object):
         self.seed       = seed
         self.aliases    = dict() # digest -> string
 
+        self._persist_to = None
+
     def update(self, **kws):
         for key, val in kws.iteritems():
             if key not in self.__dict__: raise ValueError, 'Unexpected attribute %s = %s' % (key, val)
@@ -142,13 +147,19 @@ class Config(object):
         return os.path.join(self.binaries, '$OS', '$ARCH', name)
 
     def write(self, path=None):
-        path = path or CONFIG
-        pxul.os.ensure_dir(os.path.dirname(path))
+        path = path or self._persist_to or CONFIG
+        pxul.os.ensure_dir(os.path.dirname(os.path.abspath(path)))
 
         p = Persistent(path)
         p['config'] = self
         p.close()
         logger.debug('Wrote:', path)
+
+    def persist_to(self, path=None):
+        self._persist_to = path
+        if os.path.exists(path):
+            cfg = self.__class__.load(path)
+            self.sims.update(cfg.sims)
 
     def __str__(self):
         with StringIO() as sio:

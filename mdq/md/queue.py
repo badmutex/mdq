@@ -41,9 +41,10 @@ class AddStream(Stream):
         logger.debug('%s: Processing %s' % (self.__class__.__name__, spec.digest))
         cfg = self._cfg
         spec.update_digest()
-        cfg.add(spec)
+        if spec.digest not in cfg.sims:
+            cfg.add(spec)
+            cfg.alias(spec.digest, spec['name'])
         cfg.seed = spec.seed
-        cfg.alias(spec.digest, spec['name'])
         yield spec
 
     def __iter__(self):

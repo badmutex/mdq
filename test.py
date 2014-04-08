@@ -8,7 +8,7 @@ from mdq.state import Config
 
 if __name__ == '__main__':
 
-    pxul.logging.set_debug()
+    # pxul.logging.set_debug()
 
     mkq = (
         MkWorkQueue()
@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     cfg = Config(backend='gromacs', generations=2, time=1,
                  outputfreq=0.01, cpus=8, binaries='binaries')
-    cfg.write('config.mdq')
+    cfg.persist_to('config.mdq')
 
     q = queue.MD(mkq(), configfile='config.mdq', statefile='state.mdq')
     for i in xrange(10):
