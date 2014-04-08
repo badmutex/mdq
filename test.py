@@ -2,8 +2,7 @@
 
 import pxul
 from pwq import MkWorkQueue
-from mdq import mdqueue
-from mdq.md import gmx
+from mdq.md import queue, gmx
 from mdq.state import Config
 
 
@@ -14,14 +13,16 @@ if __name__ == '__main__':
     mkq = (
         MkWorkQueue()
         .port(9123)
-        .replicate(8)
+        .replicate(1)
         .debug_all()
     )
 
-    cfg = Config(generations=2, time=5, outputfreq=0.01, cpus=8, binaries='binaries')
+    cfg = Config(backend='gromacs', generations=2, time=1,
+                 outputfreq=0.01, cpus=8, binaries='binaries')
     cfg.write('config.mdq')
 
-    q = mdqueue.MDQueue(mkq)
-    spec = gmx.Spec(name='test', tpr='tests/data/topol.tpr')
-    q.submit(spec)
+    q = queue.MD(mkq(), configfile='config.mdq', statefile='state.mdq')
+    for i in xrange(10):
+        spec = gmx.Spec(name='test.%s' % i, tpr='tests/data/topol.tpr')
+        q.add(spec)
     q()

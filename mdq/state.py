@@ -1,6 +1,7 @@
 
 from pxul.logging import logger
 from pxul.StringIO import StringIO
+import pxul.os
 
 from .persistence import Persistent
 
@@ -142,8 +143,7 @@ class Config(object):
 
     def write(self, path=None):
         path = path or CONFIG
-        if not os.path.exists(os.path.dirname(CONFIG)):
-            os.makedirs(os.path.dirname(CONFIG))
+        pxul.os.ensure_dir(os.path.dirname(path))
 
         p = Persistent(path)
         p['config'] = self
