@@ -72,11 +72,13 @@ class IPersistableTaskStream(Stream):
 
 class PersistTaskStream(IPersistableTaskStream):
     def process(self, taskable):
+        logger.debug('PersistTaskStream: processing %s' % taskable.digest)
         self._persist[taskable.digest] = taskable
         yield taskable
 
 class ResumeTaskStream(IPersistableTaskStream):
     def process(self, taskable):
+        logger.debug('ResumeTaskStream: processing %s' % taskable.digest)
         if taskable.digest in self._persist:
             t = self._persist[taskable.digest]
         else:
@@ -171,7 +173,7 @@ class GenerationalWorkQueueStream(WorkQueueStream):
         self._count[task.uuid] += 1
 
     def _is_submittable(self, task):
-        return self._gen(task) < self._generations - 1
+        return self._gen(task) < self._generations
 
     def process(self, task):
         if self._is_submittable(task):

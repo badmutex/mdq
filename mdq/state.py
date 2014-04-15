@@ -1,11 +1,13 @@
 
 from pxul.logging import logger
 from pxul.StringIO import StringIO
+import pxul.os
 
 from .persistence import Persistent
 
 import hashlib
 import os
+import random
 
 DOT_DIR = '.mdq'
 CONFIG = os.path.join(DOT_DIR, 'config')
@@ -38,10 +40,16 @@ class CADict(object):
         """
         h = obj.digest
         if h not in self._d:
+            logger.debug('Adding simulation: %s' % h)
             self._d[h] = obj
+        else:
+            logger.debug('Simulation already registered: %s' % h)
 
     def __str__(self):
         return str(self._d)
+
+    def update(self, other):
+        self._d.update(other._d)
 
 
 
@@ -49,11 +57,15 @@ def hash_file(hasher, path, size=32*1024*1024):
     """
     Hash the contents of the file given by `path`, reading at most `size` bytes at a time
     """
+    logger.debug('Hashing file: path=%s buffersize=%s' % (path, size))
     with open(path, 'rb') as fd:
         while True:
             data = fd.read(size)
             if data == '': break
             hasher.update(data)
+
+def new_seed(minval=1, maxval=10**5):
+        return random.randint(minval, maxval)
 
 class Spec(dict):
     """:: name -> str """
@@ -61,26 +73,35 @@ class Spec(dict):
     def __init__(self, *args, **kws):
         super(Spec, self).__init__(*args, **kws)
         self._digest = None
+        self._seed = new_seed()
 
     def update_digest(self):
         h = hashlib.sha256()
-        for obj in self.keys() + self.values():
-            if os.path.exists(str(obj)):
+        for key, obj in self.iteritems():
+            if key == 'seed': continue
+            if os.path.isfile(str(obj)):
                 hash_file(h, str(obj))
-            else:
-                data = repr(obj)
-            h.update(data)
+            h.update(key)
+            h.update(repr(obj))
         self._digest = h.hexdigest()
 
     @property
     def digest(self):
-        assert self._digest is not None
+        if self._digest is None:
+            self.update_digest()
         return self._digest
+
+    @property
+    def seed(self): return self._seed
 
     def __str__(self):
         with StringIO() as sio:
+            sio.writeln('spec: %s' % self.__class__)
+            sio.indent()
             for k, v in self.iteritems():
                 sio.writeln('%s: %s' % (k, v))
+            sio.writeln('seed: %s' % self.seed)
+            sio.writeln('digest: %s' % self.digest)
             return sio.getvalue().strip()
 
 class Config(object):
@@ -89,6 +110,7 @@ class Config(object):
                  generations=float('inf'),
                  time=None,
                  outputfreq=None,
+                 keep_trajfiles=True,
                  cpus=1,
                  binaries=None,
                  seed=19):
@@ -98,10 +120,13 @@ class Config(object):
         self.generations= generations
         self.time       = time
         self.outputfreq = outputfreq
+        self.keep_trajfiles = keep_trajfiles
         self.cpus       = cpus
         self.binaries   = binaries
         self.seed       = seed
         self.aliases    = dict() # digest -> string
+
+        self._persist_to = None
 
     def update(self, **kws):
         for key, val in kws.iteritems():
@@ -122,14 +147,20 @@ class Config(object):
         return os.path.join(self.binaries, '$OS', '$ARCH', name)
 
     def write(self, path=None):
-        path = path or CONFIG
-        if not os.path.exists(os.path.dirname(CONFIG)):
-            os.makedirs(os.path.dirname(CONFIG))
+        path = path or self._persist_to or CONFIG
+        pxul.os.ensure_dir(os.path.dirname(os.path.abspath(path)))
 
-        p = Persistent(path)
-        p['config'] = self
-        p.close()
+        p = Persistent(self, path)
+        p.sync()
         logger.debug('Wrote:', path)
+
+    def persist_to(self, path=None):
+        self._persist_to = path
+        if os.path.exists(path):
+            cfg = self.__class__.load(path)
+            self.sims.update(cfg.sims)
+        else:
+            self.write(path)
 
     def __str__(self):
         with StringIO() as sio:
@@ -143,24 +174,22 @@ class Config(object):
     @classmethod
     def load(cls, path=None):
         path = path or CONFIG
-        p = Persistent(path)
-        c = p['config']
-        p.close()
-        return c
+        return Persistent.load(path)
 
 class State(object):
-    def __init__(self, path):
-        self._p = Persistent(path)
+    def __init__(self, path, init=None):
+        self._d = init or dict()
+        self._p = Persistent(self._d, path)
 
-    def __setitem__(self, key, obj): self._p[key] = obj
+    def __setitem__(self, key, obj): self._d[key] = obj
 
-    def __getitem__(self, key): return self._p[key]
+    def __getitem__(self, key): return self._d[key]
 
-    def __contains__(self, el): return self._p.__contains__(el)
+    def __contains__(self, el): return self._d.__contains__(el)
 
-    def values(self): return self._p.values()
+    def values(self): return self._d.values()
 
-    def keys(self): return self._p.keys()
+    def keys(self): return self._d.keys()
 
     def __enter__(self):
         return self
@@ -173,7 +202,9 @@ class State(object):
 
     @classmethod
     def load(cls, path=STATE):
-        return cls(path)
+        d = Persistent.load(path)
+        s = State(path, init=d)
+        return s
 
 
 

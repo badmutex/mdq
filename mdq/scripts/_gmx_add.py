@@ -7,6 +7,7 @@ actually added.
 """
 
 from .. import state
+from ..md import gmx
 
 import random
 
@@ -25,11 +26,10 @@ def main(opts):
     if cfg.seed is not None:
         random.seed(cfg.seed)
 
-    spec = state.Spec()
+    spec = gmx.Spec(opts.name,
+                    tpr = opts.tpr
+                    )
 
-    spec['name'] = opts.name
-    spec['tpr'] = opts.tpr
-    spec['seed'] = random.randint(1, 10**5)
     if opts.traj       is not None: spec['traj'] = opts.traj
     if opts.positions  is not None: spec['x'] = opts.positions
     if opts.velocities is not None: spec['v'] = opts.velocities

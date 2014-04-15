@@ -1,5 +1,5 @@
 
-
+from ..state import Spec
 from .. import workqueue
 
 Taskable = workqueue.Taskable
