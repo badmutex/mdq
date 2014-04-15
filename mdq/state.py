@@ -150,9 +150,8 @@ class Config(object):
         path = path or self._persist_to or CONFIG
         pxul.os.ensure_dir(os.path.dirname(os.path.abspath(path)))
 
-        p = Persistent(path)
-        p['config'] = self
-        p.close()
+        p = Persistent(self, path)
+        p.sync()
         logger.debug('Wrote:', path)
 
     def persist_to(self, path=None):
@@ -175,24 +174,22 @@ class Config(object):
     @classmethod
     def load(cls, path=None):
         path = path or CONFIG
-        p = Persistent(path)
-        c = p['config']
-        p.close()
-        return c
+        return Persistent.load(path)
 
 class State(object):
-    def __init__(self, path):
-        self._p = Persistent(path)
+    def __init__(self, path, init=None):
+        self._d = init or dict()
+        self._p = Persistent(self._d, path)
 
-    def __setitem__(self, key, obj): self._p[key] = obj
+    def __setitem__(self, key, obj): self._d[key] = obj
 
-    def __getitem__(self, key): return self._p[key]
+    def __getitem__(self, key): return self._d[key]
 
-    def __contains__(self, el): return self._p.__contains__(el)
+    def __contains__(self, el): return self._d.__contains__(el)
 
-    def values(self): return self._p.values()
+    def values(self): return self._d.values()
 
-    def keys(self): return self._p.keys()
+    def keys(self): return self._d.keys()
 
     def __enter__(self):
         return self
@@ -205,7 +202,9 @@ class State(object):
 
     @classmethod
     def load(cls, path=STATE):
-        return cls(path)
+        d = Persistent.load(path)
+        s = State(path, init=d)
+        return s
 
 
 
