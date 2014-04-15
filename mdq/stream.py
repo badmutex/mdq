@@ -28,14 +28,6 @@ class Downstream(object):
     def upstream(self):
         raise NotImplemented
 
-class Fount(Unique, Generator):
-    """
-    Fount :: Stream a
-    """
-    def __iter__(self):
-        for task in self.generate():
-            yield task
-
 class Stream(Unique, Processor, Downstream):
     """
     Stream :: Stream a -> Stream b
@@ -62,28 +54,65 @@ def run_stream(iterable, stream_cls, extra_args=None, extra_kws=None):
     return sink()
 
 
-class IPersistableTaskStream(Stream):
-    """
-    Persistable a => Stream a -> Stream a
-    """
-    def __init__(self, source, persist):
-        super(IPersistableTaskStream, self).__init__(source)
-        self._persist = persist
+@coroutine
+def persist_stream(persister, next=null):
+    while True
+        taskable = yield
+        persister[taskable.digest] = taskable
+        next.send(taskable)
 
-    def process(self): raise NotImplemented
-
-class PersistTaskStream(IPersistableTaskStream):
-    def process(self, taskable):
-        self._persist[taskable.digest] = taskable
-        yield taskable
-
-class ResumeTaskStream(IPersistableTaskStream):
-    def process(self, taskable):
-        if taskable.digest in self._persist:
-            t = self._persist[taskable.digest]
+@coroutine
+def resume_stream(persister, next=null):
+    while True:
+        taskable = yield
+        if taskable.digest in persister:
+            t = persister[taskable.digest]
         else:
             t = taskable
-        yield t
+        next.send(t)
+
+@coroutine
+def wq_submit_stream(q, next=null):
+
+    def submit(taskable):
+        logger.debug('%s-15s' % 'Submitting', taskable.uuid)
+        task = taskable.to_task()
+        _table[task.uuid] = taskable
+        return q.submit(task)
+
+    while True:
+        t = yield
+        submit(t)
+        next.send(t)
+
+@coroutine
+def wq_wait_stream(q, timeout=5, persist_to=None, next=null):
+
+    _table = dict() # Task t => uuid -> t
+
+    def persist(taskable):
+        if persist_to is not None:
+            logger.debug('%-15s', 'Persisting', taskable.uuid)
+            p = pipeline(persist_stream)
+            p.feed([taskable])
+
+    def empty(): return len(_table) <= 0
+
+    def wait():
+        result = q.wait(timeout)
+        if result:
+            logger.info('%-15s' % 'Received', result.uuid)
+            taskable = _table[result.uuid]
+            taskable.update_task(result)
+            del _table[result.uuid]
+            persist(taskable)
+            return taskable
+
+    while True:
+        
+
+        
+
 
 class WorkQueueStream(Stream):
     """
